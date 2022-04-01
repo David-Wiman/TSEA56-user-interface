@@ -1,50 +1,75 @@
+from PySide6.QtCore import QObject, QTimer, QUrl
 from PySide6.QtWebSockets import QWebSocket, QWebSocketProtocol
-from PySide6.QtCore import QObject, QUrl, QTimer
 from PySide6.QtWidgets import QApplication
 
-URL = "ws://localhost"
+# Based on:
+#
+# https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
+
 PORT = "8000"
+URL = "ws://localhost:" + PORT
 
 
 class WebSocket(QObject):
     """A websocket for communication with the car"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         super().__init__(parent)
 
-        self.client = QWebSocket("",QWebSocketProtocol.Version13,None)
+        self.client = QWebSocket(
+            "", QWebSocketProtocol.Version13, self)
         self.client.error.connect(self.error)
 
-        self.client.open(QUrl(URL + ":" + PORT))
-        self.client.pong.connect(self.onPong)
+        print("Connecting to server [{}]".format(URL))
+        self.client.open(QUrl(URL))
 
-    def do_ping(self):
-        print("client: do_ping")
-        self.client.ping(b"foo")
+        self.client.pong.connect(self.on_pong)
 
-    def send_message(self):
-        print("client: send_message")
-        self.client.sendTextMessage("asd")
+    def ping(self):
+        print("Sending ping to server...")
+        try:
+            self.client.ping(b"PING")
+        except Exception as e:
+            print("ERROR: ", str(e))
 
-    def onPong(self, elapsedTime, payload):
-        print("onPong - time: {} ; payload: {}".format(elapsedTime, payload))
+    def on_pong(self, elapsedTime, payload):
+        print("Pong received [time: {} ; payload: {}]".format(
+            elapsedTime, str(payload)))
+
+    def send_message(self, message: str):
+        '''Sends message to server'''
+        print("Sending: ", message)
+        try:
+            self.client.sendTextMessage(message)
+        except Exception as e:
+            print("ERROR: ", str(e))
+        finally:
+            self.close("Finished")  # Close after message sent
 
     def error(self, error_code):
-        print("error code: {}".format(error_code))
-        print(self.client.errorString())
+        print("ERROR CODE:", error_code)
+        print("ERROR MESSAGE:", self.client.errorString())
 
-    def close(self):
-        self.client.close()
+    def close(self, reason: str = "unspecified"):
+        print("Closing websocket [Reason {}]".format(reason))
+        self.client.close(QWebSocketProtocol.CloseCodeNormal, reason)
 
 
-# Testkod nedan
+# Test scripts
+def send_message(client: WebSocket, msg: str):
+    client.send_message(msg)
+
+
+def ping(client: WebSocket):
+    client.ping()
+
+
 if __name__ == '__main__':
-    global client
     app = QApplication([])
     client = WebSocket(app)
 
-    QTimer.singleShot(2000, client.do_ping)
-    QTimer.singleShot(3000, client.send_message)
-    QTimer.singleShot(5000, client.close)
+    QTimer.singleShot(2000, lambda: ping(client))
+    QTimer.singleShot(3000, lambda: send_message(client, "YO!"))
+    QTimer.singleShot(10000, app.exit)
 
     app.exec()

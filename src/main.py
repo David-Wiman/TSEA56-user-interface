@@ -1,6 +1,9 @@
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QApplication, QGridLayout, QMainWindow, QMenu,
                                QWidget, QWidgetAction)
 
+from backend import WebSocket
 from graphics_widgets import (ButtonsWidget, ControlsWidget, DataWidget,
                               LogWidget, MapWidget, PlanWidget)
 
@@ -22,11 +25,14 @@ class MainWindow(QMainWindow):
         self.create_menu()
         self.create_grid()
 
+        self.websocket = None  # Declaration needed
+
     def create_menu(self):
         menu_bar = self.menuBar()
 
         file_menu = QMenu("File")
-        file_action = QWidgetAction(file_menu)
+        file_action = QAction("Connect to car", file_menu)
+        file_action.triggered.connect(self.connect_to_car)
         file_menu.addAction(file_action)
         menu_bar.addMenu(file_menu)
 
@@ -60,6 +66,17 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(plan_widget, 0, 20, 8, 12)
         grid_layout.addWidget(buttons_widget, 8, 20, 3, 12)
         grid_layout.addWidget(controls_widget, 11, 20, 7, 12)
+
+    def connect_to_car(self):
+        # Disconnect before reconnecting
+        if self.websocket is not None:
+            print("Reconnecting!")
+            self.websocket.close()
+
+        self.websocket = WebSocket(QApplication.instance())
+
+        # Test connection
+        QTimer.singleShot(500, self.websocket.ping)
 
 
 if __name__ == "__main__":
