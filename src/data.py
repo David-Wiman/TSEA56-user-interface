@@ -72,8 +72,9 @@ class ParameterConfiguration(JSONSerializable):
         return ParameterConfiguration(dict['temp'])
 
 
-def get_json_and_data_type(json_str):
+def get_type_and_data(json_str):
+    """Returns the data type and json payload"""
     json_dict = json.loads(json_str)
+    data_type = next(iter(json_dict))  # Returns name of first key
 
-    # Returns name of first key and json dict
-    return next(iter(json_dict)), json_dict
+    return data_type, json_dict[data_type]

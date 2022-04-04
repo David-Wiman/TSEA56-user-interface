@@ -2,7 +2,7 @@
 #   python -m tests.mock_server
 
 import asyncio
-import json
+from time import sleep
 
 from src.data import CarData, DriveInstruction, ParameterConfiguration
 from websockets import exceptions, serve
@@ -17,6 +17,8 @@ async def handler(ws):
 
     async for message in ws:
         print("Recieved:", str(message))
+
+        sleep(5)  # Simulate delay
 
         if message == "stop":
             await stop()
