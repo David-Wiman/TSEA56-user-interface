@@ -4,7 +4,7 @@ import json
 class JSONSerializable:
     """Enables a simple dataclass to be serialized with JSON"""
 
-    def toJSON(self) -> str:
+    def to_json(self) -> str:
         """Creates a simple JSON-object from instance"""
         return json.dumps(self, default=lambda o: o.__dict__,
                           sort_keys=True, indent=4)
@@ -37,6 +37,13 @@ class CarData(JSONSerializable):
         self.lateral_position = lateral_position
         self.angle = angle
 
+    def from_json(json_str: str):
+        dict = json.loads(json_str)
+        return CarData(dict['time'], dict['throttle'],
+                       dict['steering'], dict['driven_distance'],
+                       dict['obsticle_distance'], dict['obsticle_distance'],
+                       dict['lateral_position'], dict['angle'])
+
 
 class DriveInstruction(JSONSerializable):
     """Simple dataclass to represent a drive instruction for the car"""
@@ -48,6 +55,10 @@ class DriveInstruction(JSONSerializable):
         self.throttle = throttle
         self.steering = steering
 
+    def from_json(json_str: str):
+        dict = json.loads(json_str)
+        return DriveInstruction(dict['throttle'], dict['steering'])
+
 
 class ParameterConfiguration(JSONSerializable):
     """Simple dataclass to represent a parameter configuration for the car"""
@@ -55,3 +66,14 @@ class ParameterConfiguration(JSONSerializable):
 
     def __init__(self, temp: int = 0):
         self.temp = temp
+
+    def from_json(json_str: str):
+        dict = json.loads(json_str)
+        return ParameterConfiguration(dict['temp'])
+
+
+def get_json_and_data_type(json_str):
+    json_dict = json.loads(json_str)
+
+    # Returns name of first key and json dict
+    return next(iter(json_dict)), json_dict

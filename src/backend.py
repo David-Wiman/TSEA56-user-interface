@@ -2,6 +2,8 @@ from PySide6.QtCore import QObject, QTimer, QUrl
 from PySide6.QtWebSockets import QWebSocket, QWebSocketProtocol
 from PySide6.QtWidgets import QApplication
 
+from data import get_json_and_data_type
+
 # Based on:
 #
 # https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
@@ -24,6 +26,7 @@ class WebSocket(QObject):
         self.client.open(QUrl(URL))
 
         self.client.pong.connect(self.on_pong)
+        self.client.textMessageReceived.connect(self.on_message_recieve)
 
     def ping(self):
         print("Sending ping to server...")
@@ -44,7 +47,14 @@ class WebSocket(QObject):
         except Exception as e:
             print("ERROR: ", str(e))
         finally:
-            self.close("Finished")  # Close after message sent
+            pass  # self.close("Finished")  # Close after message sent
+
+    def on_message_recieve(self, message):
+        print("Recieved: ", message)
+        type, dict = get_json_and_data_type(message)
+
+        if type == "carData":
+            print("Is car data!", dict["carData"])
 
     def error(self, error_code):
         print("ERROR CODE:", error_code)

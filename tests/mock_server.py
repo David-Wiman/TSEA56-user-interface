@@ -1,7 +1,10 @@
-#from src.data import DriveInstruction, ParameterConfiguration, CarData
+# Körs med kommandot:
+#   python -m tests.mock_server
 
 import asyncio
+import json
 
+from src.data import CarData, DriveInstruction, ParameterConfiguration
 from websockets import exceptions, serve
 
 URL = "localhost"
@@ -19,6 +22,8 @@ async def handler(ws):
             await stop()
         elif message == "YO!":
             await send(ws, "YO!")
+        elif message == "mock_car_data":
+            await send(ws, get_mock_car_data())
         else:
             await send(ws, "idk")
 
@@ -55,5 +60,13 @@ async def main():
     print("Server stopped")
 
 
+def get_mock_car_data():
+    carData = CarData(time=225, throttle=25, steering=25, angle=25)
+    return "{" + "\"carData\": " + carData.to_json() + "}"
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Terminating server.")  # Don't print stacktrace when CTRL+C
