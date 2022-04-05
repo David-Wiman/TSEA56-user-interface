@@ -3,7 +3,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QApplication, QGridLayout, QMainWindow, QMenu,
                                QWidget, QWidgetAction)
 
-from backend import WebSocket
+from backend import websocket
 from graphics_widgets import (ButtonsWidget, ControlsWidget, DataWidget,
                               LogWidget, MapWidget, PlanWidget)
 
@@ -68,15 +68,10 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(controls_widget, 11, 20, 7, 12)
 
     def connect_to_car(self):
-        # Disconnect before reconnecting
-        if self.websocket is not None:
-            print("Reconnecting!")
-            self.websocket.close()
-
-        self.websocket = WebSocket(QApplication.instance())
+        ws = websocket()
 
         # Test connection
-        QTimer.singleShot(500, self.websocket.ping)
+        QTimer.singleShot(500, lambda: ws.ping())
 
 
 if __name__ == "__main__":

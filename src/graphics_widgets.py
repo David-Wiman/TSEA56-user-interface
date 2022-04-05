@@ -2,6 +2,8 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
                                QSizePolicy, QStackedWidget, QVBoxLayout,
                                QWidget)
 
+from backend import websocket
+
 
 class ModeButton(QPushButton):
     """A button that can toggle driving modes for the ControlWidget"""

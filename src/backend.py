@@ -17,7 +17,10 @@ URL = "ws://localhost:8000"
 
 
 class WebSocket(QObject):
-    """A websocket for communication with the car"""
+    """A singleton class, representing a websocket for communication with the car"""
+
+    # Maintain only one websocket instance
+    _instance = None
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -71,6 +74,12 @@ class WebSocket(QObject):
         print("Closing websocket [Reason {} ({})]".format(reason, code))
         self.client.close(code, reason)
 
+
+def websocket():
+    """ Returns instance of the current websocket """
+    if WebSocket._instance is None:
+        WebSocket._instance = WebSocket(QApplication.instance())
+    return WebSocket._instance
 
 # Test scripts
 def send_message(client: WebSocket, msg: str):
