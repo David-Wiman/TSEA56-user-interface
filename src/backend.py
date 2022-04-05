@@ -11,8 +11,9 @@ from data import get_type_and_data
 #
 # https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
 
-PORT = "8000"
-URL = "ws://localhost:" + PORT
+PORT = "1234"
+URL = "ws://localhost:8000"
+#URL = "ws://192.168.1.30:" + PORT
 
 
 class WebSocket(QObject):
@@ -52,7 +53,7 @@ class WebSocket(QObject):
         print("Recieved: ", message)
         type, data = get_type_and_data(message)
 
-        if type == "carData":
+        if type == "CarData":
             print("Is car data!", data)
         else:
             print("Unknown type: " + type, "\n"+str(data))

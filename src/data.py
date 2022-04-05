@@ -4,10 +4,11 @@ import json
 class JSONSerializable:
     """Enables a simple dataclass to be serialized with JSON"""
 
-    def to_json(self) -> str:
-        """Creates a simple JSON-object from instance"""
-        return json.dumps(self, default=lambda o: o.__dict__,
-                          sort_keys=True, indent=4)
+    def to_json(self, type_name: str) -> str:
+        """Creates a JSON-object from instance, with the type as top level key"""
+        payload = json.dumps(self, default=lambda o: o.__dict__,
+                             sort_keys=True, indent=4)
+        return "\"{}\": {}".format(type_name, payload)
 
 
 class CarData(JSONSerializable):
@@ -74,7 +75,11 @@ class ParameterConfiguration(JSONSerializable):
 
 def get_type_and_data(json_str):
     """Returns the data type and json payload"""
-    json_dict = json.loads(json_str)
+    try:
+        json_dict = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        print(e.msg)
+        return "Error", {}
     data_type = next(iter(json_dict))  # Returns name of first key
 
     return data_type, json_dict[data_type]
