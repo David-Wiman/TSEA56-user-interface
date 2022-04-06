@@ -2,8 +2,11 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
                                QPushButton, QSizePolicy, QStackedWidget,
                                QTableWidget, QTabWidget, QVBoxLayout, QWidget)
 
-from backend import websocket
+from backend import send_message, websocket
 
+from PySide6.QtGui import QKeySequence, QShortcut
+
+from data import DriveInstruction
 
 class PlaceHolder(QLabel):
     """Placeholder widget while app is being developed"""
@@ -159,6 +162,49 @@ class ManualMode(QWidget):
         layout.addWidget(param_btn)
         layout.addWidget(stop_btn)
 
+        """ Creating different keybord shortcuts"""
+        self.shortcut_fwrd = QShortcut(QKeySequence("w"), self)
+        self.shortcut_fwrd.activated.connect(self.send_fwrd)
+
+        self.shortcut_bwrd = QShortcut(QKeySequence("s"), self)
+        self.shortcut_bwrd.activated.connect(self.send_bwrd)
+
+        self.shortcut_right = QShortcut(QKeySequence("d"), self)
+        self.shortcut_right.activated.connect(self.send_right)
+
+        self.shortcut_left = QShortcut(QKeySequence("a"), self)
+        self.shortcut_left.activated.connect(self.send_left)
+
+        self.shortcut_fwrd_right = QShortcut(QKeySequence("e"), self)
+        self.shortcut_fwrd_right.activated.connect(self.send_fwrd_right)
+
+        self.shortcut_fwrd_left = QShortcut(QKeySequence("q"), self)
+        self.shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
+
+    def send_fward():
+        fwrd = DriveInstruction(0.3, 0)
+        websocket().send_message(fwrd)
+    
+    def send_bwrd():
+        bwrd = DriveInstruction(-0.1, 0)
+        websocket().send_message(bwrd)
+    
+    def send_right():
+        right = DriveInstruction(0.15, 0.8)
+        websocket().send_message(right)
+
+    def send_left():
+        left = DriveInstruction(0.15, -0.8)
+        websocket().send_message(left)
+
+    def send_fward_right():
+        fwrd_right = DriveInstruction(0.2, 0.5)
+        websocket().send_message(fwrd_right)
+
+    def send_fward_left():
+        fwrd_left = DriveInstruction(0.2, -0.5)
+        websocket().send_message(fwrd_left)
+        
 
 class ButtonsWidget(QWidget):
     """Buttons that can change which drivning mode is used to steer the car"""
@@ -192,3 +238,4 @@ class ModeButton(QPushButton):
     def action(self, action):
         # self.toggle_pressed_style()
         action()
+
