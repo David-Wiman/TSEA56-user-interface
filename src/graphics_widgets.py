@@ -2,6 +2,8 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
                                QPushButton, QSizePolicy, QStackedWidget,
                                QTableWidget, QTabWidget, QVBoxLayout, QWidget)
 
+from backend import websocket
+
 
 class PlaceHolder(QLabel):
     """Placeholder widget while app is being developed"""
