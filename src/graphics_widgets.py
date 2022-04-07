@@ -1,12 +1,13 @@
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
-                               QPushButton, QSizePolicy, QStackedWidget,
-                               QTableWidget, QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
+                               QLabel, QPushButton, QSizePolicy,
+                               QStackedWidget, QTableWidget, QTabWidget,
+                               QToolButton, QVBoxLayout, QWidget)
 
 from backend import send_message, websocket
-
-from PySide6.QtGui import QKeySequence, QShortcut
-
 from data import DriveInstruction
+
 
 class PlaceHolder(QLabel):
     """Placeholder widget while app is being developed"""
@@ -158,53 +159,105 @@ class ManualMode(QWidget):
             "background-color: red; border : 2px solid darkred;font-size: 20px;font-family: Arial")
         stop_btn.clicked.connect(lambda: print("STOP!"))
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(param_btn)
-        layout.addWidget(stop_btn)
+        layout = QHBoxLayout(self)
 
-        """ Creating different keybord shortcuts"""
-        self.shortcut_fwrd = QShortcut(QKeySequence("w"), self)
-        self.shortcut_fwrd.activated.connect(self.send_fwrd)
+        layout_left = QVBoxLayout()
+        layout_right = QGridLayout()
+        layout_left.addWidget(param_btn)
+        layout_left.addWidget(stop_btn)
 
-        self.shortcut_bwrd = QShortcut(QKeySequence("s"), self)
-        self.shortcut_bwrd.activated.connect(self.send_bwrd)
+        self.create_drive_buttons(layout_right)
+        self.setup_keyboard_shortcuts()
 
-        self.shortcut_right = QShortcut(QKeySequence("d"), self)
-        self.shortcut_right.activated.connect(self.send_right)
+        layout.addLayout(layout_left)
+        layout.addLayout(layout_right)
 
-        self.shortcut_left = QShortcut(QKeySequence("a"), self)
-        self.shortcut_left.activated.connect(self.send_left)
+    def create_drive_buttons(self, layout):
+        size_policy = QSizePolicy()
+        size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
+        size_policy.setVerticalPolicy(QSizePolicy.Expanding)
+        size_policy.setWidthForHeight(True)
 
-        self.shortcut_fwrd_right = QShortcut(QKeySequence("e"), self)
-        self.shortcut_fwrd_right.activated.connect(self.send_fwrd_right)
+        fwrd = QToolButton()
+        fwrd.clicked.connect(self.send_fwrd)
+        fwrd.setArrowType(Qt.UpArrow)
+        fwrd.setSizePolicy(size_policy)
+        layout.addWidget(fwrd, 0, 1)
 
-        self.shortcut_fwrd_left = QShortcut(QKeySequence("q"), self)
-        self.shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
+        bwrd = QToolButton()
+        bwrd.clicked.connect(self.send_bwrd)
+        bwrd.setArrowType(Qt.DownArrow)
+        bwrd.setSizePolicy(size_policy)
+        layout.addWidget(bwrd, 1, 1)
 
-    def send_fward():
+        left = QToolButton()
+        left.clicked.connect(self.send_left)
+        left.setArrowType(Qt.LeftArrow)
+        left.setSizePolicy(size_policy)
+        layout.addWidget(left, 1, 0)
+
+        right = QToolButton()
+        right.clicked.connect(self.send_right)
+        right.setArrowType(Qt.RightArrow)
+        right.setSizePolicy(size_policy)
+        layout.addWidget(right, 1, 2)
+
+        fwrd_right = QToolButton()
+        fwrd_right.clicked.connect(self.send_fwrd_right)
+        fwrd_right.setArrowType(Qt.NoArrow)
+        fwrd_right.setSizePolicy(size_policy)
+        layout.addWidget(fwrd_right, 0, 2)
+
+        fwrd_left = QToolButton()
+        fwrd_left.clicked.connect(self.send_fwrd_left)
+        fwrd_left.setArrowType(Qt.NoArrow)
+        fwrd_left.setSizePolicy(size_policy)
+        layout.addWidget(fwrd_left, 0, 0)
+
+    def setup_keyboard_shortcuts(self):
+        """ Create WASD keybord shortcuts"""
+        shortcut_fwrd = QShortcut(QKeySequence("w"), self)
+        shortcut_fwrd.activated.connect(self.send_fwrd)
+
+        shortcut_bwrd = QShortcut(QKeySequence("s"), self)
+        shortcut_bwrd.activated.connect(self.send_bwrd)
+
+        shortcut_right = QShortcut(QKeySequence("d"), self)
+        shortcut_right.activated.connect(self.send_right)
+
+        shortcut_left = QShortcut(QKeySequence("a"), self)
+        shortcut_left.activated.connect(self.send_left)
+
+        shortcut_fwrd_right = QShortcut(QKeySequence("e"), self)
+        shortcut_fwrd_right.activated.connect(self.send_fwrd_right)
+
+        shortcut_fwrd_left = QShortcut(QKeySequence("q"), self)
+        shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
+
+    def send_fwrd(self):
         fwrd = DriveInstruction(0.3, 0)
-        websocket().send_message(fwrd)
-    
-    def send_bwrd():
+        websocket().send_message(fwrd.to_json("ManualDriveInstruction"))
+
+    def send_bwrd(self):
         bwrd = DriveInstruction(-0.1, 0)
-        websocket().send_message(bwrd)
-    
-    def send_right():
+        websocket().send_message(bwrd.to_json("ManualDriveInstruction"))
+
+    def send_right(self):
         right = DriveInstruction(0.15, 0.8)
-        websocket().send_message(right)
+        websocket().send_message(right.to_json("ManualDriveInstruction"))
 
-    def send_left():
+    def send_left(self):
         left = DriveInstruction(0.15, -0.8)
-        websocket().send_message(left)
+        websocket().send_message(left.to_json("ManualDriveInstruction"))
 
-    def send_fward_right():
+    def send_fwrd_right(self):
         fwrd_right = DriveInstruction(0.2, 0.5)
-        websocket().send_message(fwrd_right)
+        websocket().send_message(fwrd_right.to_json("ManualDriveInstruction"))
 
-    def send_fward_left():
+    def send_fwrd_left(self):
         fwrd_left = DriveInstruction(0.2, -0.5)
-        websocket().send_message(fwrd_left)
-        
+        websocket().send_message(fwrd_left.to_json("ManualDriveInstruction"))
+
 
 class ButtonsWidget(QWidget):
     """Buttons that can change which drivning mode is used to steer the car"""
@@ -238,4 +291,3 @@ class ModeButton(QPushButton):
     def action(self, action):
         # self.toggle_pressed_style()
         action()
-
