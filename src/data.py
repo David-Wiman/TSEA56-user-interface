@@ -8,7 +8,7 @@ class JSONSerializable:
         """Creates a JSON-object from instance, with the type as top level key"""
         payload = json.dumps(self, default=lambda o: o.__dict__,
                              sort_keys=True, indent=4)
-        return "\"{}\": {}".format(type_name, payload)
+        return "{" + "\"{}\": {}".format(type_name, payload) + "}"
 
 
 class CarData(JSONSerializable):
