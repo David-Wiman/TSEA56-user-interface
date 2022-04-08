@@ -1,59 +1,59 @@
-from time import sleep
-
-from PySide6.QtCore import QObject, QTimer, QUrl
-from PySide6.QtNetwork import QAbstractSocket
-from PySide6.QtWebSockets import QWebSocket, QWebSocketProtocol
+from PySide6.QtCore import QObject, QTimer
+from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import get_type_and_data
+from data import DriveInstruction, get_type_and_data
 
 # Based on:
 #
 # https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
 
-PORT = "1234"
-URL = "ws://localhost:8000"
-#URL = "ws://192.168.1.30:" + PORT
+PORT = 1234
+URL = "192.168.1.30"
 
 
-class WebSocket(QObject):
-    """A singleton class, representing a websocket for communication with the car"""
+class Socket(QObject):
+    """A singleton class, representing a tcp socket for communication with the car"""
 
     # Maintain only one websocket instance
     _instance = None
 
     def __init__(self, parent):
         super().__init__(parent)
-        print("Connecting to server [{}]".format(URL))
-        self.client = QWebSocket("", QWebSocketProtocol.Version13, self)
-        self.client.open(QUrl(URL))
+        self.pSocket = QTcpSocket(self)
+        self.pSocket.readyRead.connect(self.on_recieved)
+        self.pSocket.connected.connect(self.on_connected)
+        self.pSocket.disconnected.connect(self.on_disconnected)
+        self.pSocket.errorOccurred.connect(self.on_error)
 
-        self.client.connected.connect(self.on_connect)
-        self.client.error.connect(self.error)
-        self.client.pong.connect(self.on_pong)
-        self.client.textMessageReceived.connect(self.on_message_recieve)
-        self.client.disconnected.connect(self.on_disconnect)
+    def connect(self):
+        """ Connect socket to host """
+        print("Connecting to server....")
+        self.pSocket.connectToHost(URL, PORT)
 
-    def ping(self):
-        print("Sending ping to server...")
-        self.client.ping(b"PING")
-
-    def on_pong(self, elapsedTime, payload):
-        print("Pong received [time: {} ; payload: {}]".format(
-            elapsedTime, str(payload)))
+    def disconnect(self):
+        """ Disconnect socket from host """
+        print("Disconnecting from server...")
+        self.pSocket.disconnectFromHost()
 
     def send_message(self, message: str):
-        '''Sends message to server'''
-        if not self.client.isValid():
-            # Verify that connection is ready to transmit
-            raise Exception("Connection not valid!")
+        """ Sends message to server. Throws if connection not valid. """
+        if (not self.pSocket.state == QAbstractSocket.ConnectedState or
+                not self.pSocket.isValid()):
+            print(self.pSocket.state)
+            print(self.pSocket.isValid())
+            raise ConnectionError("Socket not ready")
 
-        print("Sending: ", message)
-        self.client.sendTextMessage(message)
-        # self.close("Finished")  # Close after message sent
+        message += "\n"  # Add terminating char
+        bytes = message.encode("utf-8")
+        print("Sending:", bytes)
+        self.pSocket.write(bytes)
+        self.pSocket.flush()  # Clear buffer after send
 
-    def on_message_recieve(self, message):
-        print("Recieved: ", message)
+    def on_recieved(self):
+        bytes = self.pSocket.readAll()
+        print("Reading data:", bytes)
+        message = str(bytes)
         type, data = get_type_and_data(message)
 
         if type == "CarData":
@@ -61,46 +61,46 @@ class WebSocket(QObject):
         else:
             print("Unknown type: " + type, "\n"+str(data))
 
-    def error(self, error_code: QAbstractSocket.SocketError):
-        print("ERROR: {} + ({})".format(self.client.errorString(), error_code.name))
+    def on_error(self, error):
+        if error == QAbstractSocket.ConnectionRefusedError:
+            print('Unable to send data to port: "{}"'.format(PORT))
+            print("trying to reconnect")
+            QTimer.singleShot(1000, self.slotSendMessage)
 
-    def on_connect(self):
-        print("Connected to server.")
+    def on_connected(self):
+        print("Connected")
 
-    def on_disconnect(self):
-        print("Disconnected from server.")
-
-    def close(self, reason: str = "unspecified", code=QWebSocketProtocol.CloseCodeNormal):
-        print("Closing websocket [Reason {} ({})]".format(reason, code))
-        self.client.close(code, reason)
-
-
-def websocket():
-    """ Returns instance of the current websocket """
-    if WebSocket._instance is None:
-        WebSocket._instance = WebSocket(QApplication.instance())
-    return WebSocket._instance
-
-# Test scripts
-def send_message(client: WebSocket, msg: str):
-    client.send_message(msg)
+    def on_disconnected(self):
+        print("Disconnected")
 
 
-def ping(client: WebSocket):
-    client.ping()
+def socket():
+    """ Returns instance of the current tcp socket """
+    if Socket._instance is None:
+        Socket._instance = Socket(QApplication.instance())
+    return Socket._instance
 
 
-def close():
-    client.close()
+def send_message(socket: Socket):
+    socket.connect()
+    successful = socket.pSocket.waitForConnected(1000)
+    if not successful:
+        print("Connection failed")
+
+    socket.send_message(
+        DriveInstruction(throttle=10.0).to_json("ManualDriveInstruction"))
+
+    QTimer.singleShot(1500, socket.disconnect())
 
 
 if __name__ == '__main__':
     app = QApplication([])
-    client = WebSocket(app)
+    client = Socket(app)
 
-    QTimer.singleShot(2000, lambda: ping(client))
-    QTimer.singleShot(3000, lambda: send_message(client, "YO!"))
-    QTimer.singleShot(5000, lambda: close)
+    QTimer.singleShot(1100, lambda: send_message(client))
+    #QTimer.singleShot(2000, lambda: ping(client))
+    #QTimer.singleShot(3000, lambda: send_message(client, "YO!"))
+    #QTimer.singleShot(5000, lambda: close)
     QTimer.singleShot(10000, app.exit)
 
     app.exec()
