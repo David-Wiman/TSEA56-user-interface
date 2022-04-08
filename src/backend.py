@@ -38,11 +38,8 @@ class Socket(QObject):
 
     def send_message(self, message: str):
         """ Sends message to server. Throws if connection not valid. """
-        if (not self.pSocket.state == QAbstractSocket.ConnectedState or
-                not self.pSocket.isValid()):
-            print(self.pSocket.state)
-            print(self.pSocket.isValid())
-            raise ConnectionError("Socket not ready")
+        if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
+            raise ConnectionError("Socket not Connected")
 
         message += "\n"  # Add terminating char
         bytes = message.encode("utf-8")

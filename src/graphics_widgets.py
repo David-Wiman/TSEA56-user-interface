@@ -1,3 +1,4 @@
+from time import time
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
@@ -5,7 +6,7 @@ from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
                                QStackedWidget, QTableWidget, QTabWidget,
                                QToolButton, QVBoxLayout, QWidget)
 
-from backend import send_message, websocket
+from backend import socket
 from data import DriveInstruction
 
 
@@ -144,6 +145,8 @@ class ControlsWidget(QStackedWidget):
 
 class ManualMode(QWidget):
 
+    MAX_SEND_RATE = 1/10  # Frequency (Hz)
+
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -172,6 +175,8 @@ class ManualMode(QWidget):
         layout.addLayout(layout_left)
         layout.addLayout(layout_right)
 
+        self.timer = time()
+
     def create_drive_buttons(self, layout):
         size_policy = QSizePolicy()
         size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
@@ -180,36 +185,48 @@ class ManualMode(QWidget):
 
         fwrd = QToolButton()
         fwrd.clicked.connect(self.send_fwrd)
+        fwrd.setAutoRepeat(True)
+        fwrd.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
         fwrd.setArrowType(Qt.UpArrow)
         fwrd.setSizePolicy(size_policy)
         layout.addWidget(fwrd, 0, 1)
 
         bwrd = QToolButton()
         bwrd.clicked.connect(self.send_bwrd)
+        bwrd.setAutoRepeat(True)
+        bwrd.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
         bwrd.setArrowType(Qt.DownArrow)
         bwrd.setSizePolicy(size_policy)
         layout.addWidget(bwrd, 1, 1)
 
         left = QToolButton()
         left.clicked.connect(self.send_left)
+        left.setAutoRepeat(True)
+        left.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
         left.setArrowType(Qt.LeftArrow)
         left.setSizePolicy(size_policy)
         layout.addWidget(left, 1, 0)
 
         right = QToolButton()
         right.clicked.connect(self.send_right)
+        right.setAutoRepeat(True)
+        right.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
         right.setArrowType(Qt.RightArrow)
         right.setSizePolicy(size_policy)
         layout.addWidget(right, 1, 2)
 
         fwrd_right = QToolButton()
         fwrd_right.clicked.connect(self.send_fwrd_right)
+        fwrd_right.setAutoRepeat(True)
+        fwrd_right.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
         fwrd_right.setArrowType(Qt.NoArrow)
         fwrd_right.setSizePolicy(size_policy)
         layout.addWidget(fwrd_right, 0, 2)
 
         fwrd_left = QToolButton()
         fwrd_left.clicked.connect(self.send_fwrd_left)
+        fwrd_left.setAutoRepeat(True)
+        fwrd_left.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
         fwrd_left.setArrowType(Qt.NoArrow)
         fwrd_left.setSizePolicy(size_policy)
         layout.addWidget(fwrd_left, 0, 0)
@@ -235,28 +252,33 @@ class ManualMode(QWidget):
         shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
 
     def send_fwrd(self):
-        fwrd = DriveInstruction(0.3, 0)
-        websocket().send_message(fwrd.to_json("ManualDriveInstruction"))
+        self.send_drive_instruction(DriveInstruction(0.3, 0))
 
     def send_bwrd(self):
-        bwrd = DriveInstruction(-0.1, 0)
-        websocket().send_message(bwrd.to_json("ManualDriveInstruction"))
+        self.send_drive_instruction(DriveInstruction(-0.1, 0))
 
     def send_right(self):
-        right = DriveInstruction(0.15, 0.8)
-        websocket().send_message(right.to_json("ManualDriveInstruction"))
+        self.send_drive_instruction(DriveInstruction(0.15, 0.8))
 
     def send_left(self):
-        left = DriveInstruction(0.15, -0.8)
-        websocket().send_message(left.to_json("ManualDriveInstruction"))
+        self.send_drive_instruction(DriveInstruction(0.15, -0.8))
 
     def send_fwrd_right(self):
-        fwrd_right = DriveInstruction(0.2, 0.5)
-        websocket().send_message(fwrd_right.to_json("ManualDriveInstruction"))
+        self.send_drive_instruction(DriveInstruction(0.2, 0.5))
 
     def send_fwrd_left(self):
-        fwrd_left = DriveInstruction(0.2, -0.5)
-        websocket().send_message(fwrd_left.to_json("ManualDriveInstruction"))
+        self.send_drive_instruction(DriveInstruction(0.2, -0.5))
+
+    def send_drive_instruction(self, drive_instruction):
+        new_time = time()
+        if new_time - self.timer > self.MAX_SEND_RATE:
+            print("Time:", new_time - self.timer)
+            try:
+                socket().send_message(drive_instruction.to_json("ManualDriveInstruction"))
+            except ConnectionError as e:
+                print("ERROR:", e)
+
+            self.timer = new_time  # Reset timer
 
 
 class ButtonsWidget(QWidget):
