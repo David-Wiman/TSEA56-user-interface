@@ -1,4 +1,5 @@
 from time import time
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
@@ -11,7 +12,7 @@ from data import DriveInstruction
 
 
 class PlaceHolder(QLabel):
-    """Placeholder widget while app is being developed"""
+    """ Placeholder widget while app is being developed """
 
     def __init__(self, name: str):
         super().__init__()
@@ -22,7 +23,7 @@ class PlaceHolder(QLabel):
 
 
 class MapWidget(PlaceHolder):
-    """A map that illustrates where the car is on the track"""
+    """ A map that illustrates where the car is on the track """
 
     def __init__(self):
         super().__init__("Map")
@@ -31,7 +32,7 @@ class MapWidget(PlaceHolder):
 
 
 class DataWidget(QFrame):
-    """A box which lists the most recent driving data"""
+    """ A box which lists the most recent driving data """
 
     def __init__(self):
         super().__init__()
@@ -93,7 +94,7 @@ class DataWidget(QFrame):
 
 
 class PlanWidget(PlaceHolder):
-    """A box that lists the currently planned driving instructions"""
+    """ A box that lists the currently planned driving instructions """
 
     def __init__(self):
         super().__init__("Plan")
@@ -102,7 +103,7 @@ class PlanWidget(PlaceHolder):
 
 
 class LogWidget(QTabWidget):
-    """A console that displays logs recieved from the car"""
+    """ A console that displays logs recieved from the car """
 
     def __init__(self):
         super().__init__()
@@ -115,12 +116,11 @@ class LogWidget(QTabWidget):
             ("Message;Severity;Node;Timestamp").split(";"))
         logger.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
-        # creating tabWidget to insert logger osv
         self.addTab(logger, "Logg")
 
 
 class ControlsWidget(QStackedWidget):
-    """A controls area where the user can control the car. Has different modes."""
+    """ A controls area where the user can control the car. Has different modes. """
 
     widget_index = {"manual": 0, "semi": 1, "auto": 2}
 
@@ -139,13 +139,16 @@ class ControlsWidget(QStackedWidget):
         self.setStyleSheet("border: 1px solid grey")
 
     def set_index(self, mode):
-        #print("Changing controls to " + mode + " mode!")
         self.setCurrentIndex(self.widget_index[mode])
 
 
 class ManualMode(QWidget):
+    """ The buttons needed for manual driving """
 
     MAX_SEND_RATE = 1/10  # Frequency (Hz)
+    CAR_ACC = 100         # Max throttle
+    FULL_STEER = 280      # Max steer (right)
+    HALF_STEER = 100      # Half steer
 
     def __init__(self):
         super().__init__()
@@ -160,7 +163,7 @@ class ManualMode(QWidget):
         stop_btn.setFixedSize(110, 110)
         stop_btn.setStyleSheet(
             "background-color: red; border : 2px solid darkred;font-size: 20px;font-family: Arial")
-        stop_btn.clicked.connect(lambda: print("STOP!"))
+        stop_btn.clicked.connect(socket().hard_stop_car)
 
         layout = QHBoxLayout(self)
 
@@ -232,7 +235,7 @@ class ManualMode(QWidget):
         layout.addWidget(fwrd_left, 0, 0)
 
     def setup_keyboard_shortcuts(self):
-        """ Create WASD keybord shortcuts"""
+        """ Create WASD keybord shortcuts """
         shortcut_fwrd = QShortcut(QKeySequence("w"), self)
         shortcut_fwrd.activated.connect(self.send_fwrd)
 
@@ -252,27 +255,31 @@ class ManualMode(QWidget):
         shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
 
     def send_fwrd(self):
-        self.send_drive_instruction(DriveInstruction(0.3, 0))
+        self.send_drive_instruction(DriveInstruction(self.CAR_ACC, 0))
 
     def send_bwrd(self):
-        self.send_drive_instruction(DriveInstruction(-0.1, 0))
+        self.send_drive_instruction(DriveInstruction(0, 0))
 
     def send_right(self):
-        self.send_drive_instruction(DriveInstruction(0.15, 0.8))
+        self.send_drive_instruction(
+            DriveInstruction(self.CAR_ACC, self.FULL_STEER))
 
     def send_left(self):
-        self.send_drive_instruction(DriveInstruction(0.15, -0.8))
+        self.send_drive_instruction(
+            DriveInstruction(self.CAR_ACC, -self.FULL_STEER))
 
     def send_fwrd_right(self):
-        self.send_drive_instruction(DriveInstruction(0.2, 0.5))
+        self.send_drive_instruction(
+            DriveInstruction(self.CAR_ACC, self.HALF_STEER))
 
     def send_fwrd_left(self):
-        self.send_drive_instruction(DriveInstruction(0.2, -0.5))
+        self.send_drive_instruction(
+            DriveInstruction(self.CAR_ACC, -self.HALF_STEER))
 
     def send_drive_instruction(self, drive_instruction):
+        # Sends drive intruction at approximately MAX_SEND_RATE (Hz)
         new_time = time()
         if new_time - self.timer > self.MAX_SEND_RATE:
-            print("Time:", new_time - self.timer)
             try:
                 socket().send_message(drive_instruction.to_json("ManualDriveInstruction"))
             except ConnectionError as e:
@@ -282,7 +289,7 @@ class ManualMode(QWidget):
 
 
 class ButtonsWidget(QWidget):
-    """Buttons that can change which drivning mode is used to steer the car"""
+    """ Buttons that can change which drivning mode is used to steer the car """
 
     def __init__(self, change_mode=lambda: None):
         super().__init__()
@@ -300,16 +307,14 @@ class ButtonsWidget(QWidget):
 
 
 class ModeButton(QPushButton):
-    """A button that can toggle driving modes for the ControlWidget"""
+    """ A button that can toggle driving modes for the ControlWidget """
 
     def __init__(self, label: str, action=lambda: None):
         super().__init__()
-        #self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setMinimumSize(110, 45)
 
         self.setText(label)
         self.clicked.connect(lambda: self.action(action))
 
     def action(self, action):
-        # self.toggle_pressed_style()
         action()
