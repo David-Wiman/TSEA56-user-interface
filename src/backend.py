@@ -36,6 +36,10 @@ class Socket(QObject):
         print("Disconnecting from server...")
         self.pSocket.disconnectFromHost()
 
+    def hard_stop_car(self):
+        """ Sends emergency stop signal to car """
+        self.send_message("STOP")
+
     def send_message(self, message: str):
         """ Sends message to server. Throws if connection not valid. """
         if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
@@ -79,6 +83,7 @@ def socket():
 
 
 def send_message(socket: Socket):
+    # test method
     socket.connect()
     successful = socket.pSocket.waitForConnected(1000)
     if not successful:
