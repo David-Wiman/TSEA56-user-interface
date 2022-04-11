@@ -14,18 +14,11 @@ class JSONSerializable:
 class CarData(JSONSerializable):
     """ Simple dataclass to represent the car's status data """
 
-    time: int
-    throttle: int
-    steering: int
-    driven_distance: float
-    obsticle_distance: int
-    lateral_position: int
-    angle: float
-
     def __init__(self,
                  time: int = 0,
                  throttle: int = 0,
                  steering: int = 0,
+                 velocity: int = 0,
                  driven_distance: float = 0,
                  obsticle_distance: int = 0,
                  lateral_position: int = 0,
@@ -33,6 +26,7 @@ class CarData(JSONSerializable):
         self.time = time
         self.throttle = throttle
         self.steering = steering
+        self.velocity = velocity
         self.driven_distance = driven_distance
         self.obsticle_distance = obsticle_distance
         self.lateral_position = lateral_position
@@ -41,10 +35,10 @@ class CarData(JSONSerializable):
     def from_json(json_str: str):
         """ Returns instance from json string """
         dict = json.loads(json_str)
-        return CarData(dict['time'], dict['throttle'],
-                       dict['steering'], dict['driven_distance'],
-                       dict['obsticle_distance'], dict['obsticle_distance'],
-                       dict['lateral_position'], dict['angle'])
+        return CarData(dict["time"], dict["throttle"],
+                       dict["steering"], dict["velocity"],
+                       dict["driven_distance"], dict["obsticle_distance"],
+                       dict["lateral_position"], dict["angle"])
 
     def to_json(self) -> str:
         return super().to_json("CarData")
@@ -63,7 +57,7 @@ class ManualDriveInstruction(JSONSerializable):
     def from_json(json_str: str):
         """ Returns instance from json string """
         dict = json.loads(json_str)
-        return ManualDriveInstruction(dict['throttle'], dict['steering'])
+        return ManualDriveInstruction(dict["throttle"], dict["steering"])
 
     def to_json(self) -> str:
         return super().to_json("ManualDriveInstruction")
@@ -79,7 +73,7 @@ class ParameterConfiguration(JSONSerializable):
     def from_json(json_str: str):
         """ Returns instance from json string """
         dict = json.loads(json_str)
-        return ParameterConfiguration(dict['temp'])
+        return ParameterConfiguration(dict["temp"])
 
     def to_json(self) -> str:
         return super().to_json("ParameterConfiguration")
