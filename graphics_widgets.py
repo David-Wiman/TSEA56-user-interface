@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
                                QStackedWidget, QTableWidget, QTabWidget,
                                QToolButton, QVBoxLayout, QWidget)
 
-from backend import socket
-from data import ManualDriveInstruction
+from backend import backend_signals, socket
+from data import CarData, ManualDriveInstruction
 
 
 class PlaceHolder(QLabel):
@@ -31,66 +31,73 @@ class MapWidget(PlaceHolder):
         self.setStyleSheet("border: 1px solid grey")
 
 
+class DataField(QLabel):
+    """ Custom label to display car data field """
+
+    def __init__(self, label: str, data, unit: str):
+        super().__init__()
+        self.label = label
+        self.unit = unit
+
+        self.update_data(data)
+        self.resize(90, 50)
+        self.setStyleSheet("border: 0px")
+
+    def update_data(self, data):
+        """ Updates field with new data, but same label and unit """
+        label_padded = self.label + ":\t\t"
+        if len(self.label) < 8:
+            label_padded += "\t"  # Fix alignment for short labels
+
+        self.setText(label_padded + str(data) + " " + self.unit)
+
+
 class DataWidget(QFrame):
     """ A box which lists the most recent driving data """
 
     def __init__(self):
         super().__init__()
+
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.setMinimumWidth(250)
 
         layout = QVBoxLayout(self)
 
-        # creating label - Data
+        # Widget title label
         data_lbl = QLabel(self)
         data_lbl.resize(70, 50)
         data_lbl.setText("Data")
         data_lbl.setStyleSheet("border: 0px")
         layout.addWidget(data_lbl)
 
-        # creating label - Drive Time
-        drive_time_lbl = QLabel(self)
-        drive_time_lbl.resize(90, 50)
-        drive_time_lbl.setText("Körtid:")
-        drive_time_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(drive_time_lbl)
+        # Widget data labels
+        self.labels: list[DataField] = []
+        self.labels.append(DataField("Körtid", 0, "s"))
+        self.labels.append(DataField("Gaspådrag", 0, ""))
+        self.labels.append(DataField("Styrutslag", 0, ""))
+        self.labels.append(DataField("Hastighet", 0, "cm/s"))
+        self.labels.append(DataField("Körsträcka", 0, "cm"))
+        self.labels.append(DataField("Hinderavstånd", 0, "cm"))
+        self.labels.append(DataField("Lateral", 0, "cm"))
+        self.labels.append(DataField("Vinkelavvikelse", 0, "rad"))
 
-        # creating label - Gas
-        gas_lbl = QLabel(self)
-        gas_lbl.resize(90, 50)
-        gas_lbl.setText("Gaspådrag:")
-        gas_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(gas_lbl)
-
-        # creating label - Strearing
-        stear_lbl = QLabel(self)
-        stear_lbl.resize(90, 50)
-        stear_lbl.setText("Styrutslag:")
-        stear_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(stear_lbl)
-
-        # creating label - Velocity
-        vel_lbl = QLabel(self)
-        vel_lbl.resize(90, 50)
-        vel_lbl.setText("Hastighet:")
-        vel_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(vel_lbl)
-
-        # creating label - Distance
-        dist_lbl = QLabel(self)
-        dist_lbl.resize(90, 50)
-        dist_lbl.setText("Körsträcka:")
-        dist_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(dist_lbl)
-
-        # creating label - lateral dist
-        lat_lbl = QLabel(self)
-        lat_lbl.resize(90, 50)
-        lat_lbl.setText("Lateral:")
-        lat_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(lat_lbl)
+        for label in self.labels:
+            # Add data labels to screen
+            layout.addWidget(label)
 
         self.setStyleSheet("border: 1px solid grey")
+
+        # Automatically update data when it arrives from socket
+        backend_signals().new_car_data.connect(self.update_data)
+
+    def update_data(self, data: CarData):
+        self.labels[0].update_data(data.time)
+        self.labels[1].update_data(data.throttle)
+        self.labels[2].update_data(data.steering)
+        self.labels[3].update_data(data.velocity)
+        self.labels[4].update_data(data.driven_distance)
+        self.labels[5].update_data(data.obsticle_distance)
+        self.labels[6].update_data(data.lateral_position)
 
 
 class PlanWidget(PlaceHolder):

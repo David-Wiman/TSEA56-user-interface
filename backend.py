@@ -1,19 +1,31 @@
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import ManualDriveInstruction, get_type_and_data
-
-# Based on:
-#
-# https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
+from data import CarData, ManualDriveInstruction, get_type_and_data
 
 PORT = 1234
 URL = "192.168.1.31"
 
 
+class BackendSignals(QObject):
+    """ A singleton class, containing the signals from the backend needed to update UI """
+
+    # Maintain only one instance
+    _instance = None
+
+    new_car_data = Signal(CarData)  # New car data has been recieved
+
+
+def backend_signals():
+    """ Returns instance of the current backend signals """
+    if BackendSignals._instance is None:
+        BackendSignals._instance = BackendSignals(QApplication.instance())
+    return BackendSignals._instance
+
+
 class Socket(QObject):
-    """A singleton class, representing a tcp socket for communication with the car"""
+    """ A singleton class, representing a tcp socket for communication with the car """
 
     # Maintain only one websocket instance
     _instance = None
@@ -58,7 +70,7 @@ class Socket(QObject):
         type, data = get_type_and_data(message)
 
         if type == "CarData":
-            print("Is car data!", data)
+            backend_signals().new_car_data.emit(CarData.from_json(data))
         else:
             print("Unknown type: " + type, "\n"+str(data))
 
