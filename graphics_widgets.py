@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
                                QToolButton, QVBoxLayout, QWidget)
 
 from backend import socket
-from data import DriveInstruction
+from data import ManualDriveInstruction
 
 
 class PlaceHolder(QLabel):
@@ -255,33 +255,33 @@ class ManualMode(QWidget):
         shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
 
     def send_fwrd(self):
-        self.send_drive_instruction(DriveInstruction(self.CAR_ACC, 0))
+        self.send_drive_instruction(ManualDriveInstruction(self.CAR_ACC, 0))
 
     def send_bwrd(self):
-        self.send_drive_instruction(DriveInstruction(0, 0))
+        self.send_drive_instruction(ManualDriveInstruction(0, 0))
 
     def send_right(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, self.FULL_STEER))
+            ManualDriveInstruction(self.CAR_ACC, self.FULL_STEER))
 
     def send_left(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, -self.FULL_STEER))
+            ManualDriveInstruction(self.CAR_ACC, -self.FULL_STEER))
 
     def send_fwrd_right(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, self.HALF_STEER))
+            ManualDriveInstruction(self.CAR_ACC, self.HALF_STEER))
 
     def send_fwrd_left(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, -self.HALF_STEER))
+            ManualDriveInstruction(self.CAR_ACC, -self.HALF_STEER))
 
-    def send_drive_instruction(self, drive_instruction):
+    def send_drive_instruction(self, drive_instruction: ManualDriveInstruction):
         # Sends drive intruction at approximately MAX_SEND_RATE (Hz)
         new_time = time()
         if new_time - self.timer > self.MAX_SEND_RATE:
             try:
-                socket().send_message(drive_instruction.to_json("ManualDriveInstruction"))
+                socket().send_message(drive_instruction.to_json())
             except ConnectionError as e:
                 print("ERROR:", e)
 

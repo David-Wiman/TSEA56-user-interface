@@ -46,8 +46,11 @@ class CarData(JSONSerializable):
                        dict['obsticle_distance'], dict['obsticle_distance'],
                        dict['lateral_position'], dict['angle'])
 
+    def to_json(self) -> str:
+        return super().to_json("CarData")
 
-class DriveInstruction(JSONSerializable):
+
+class ManualDriveInstruction(JSONSerializable):
     """ Simple dataclass to represent a drive instruction for the car """
 
     throttle: int
@@ -60,7 +63,10 @@ class DriveInstruction(JSONSerializable):
     def from_json(json_str: str):
         """ Returns instance from json string """
         dict = json.loads(json_str)
-        return DriveInstruction(dict['throttle'], dict['steering'])
+        return ManualDriveInstruction(dict['throttle'], dict['steering'])
+
+    def to_json(self) -> str:
+        return super().to_json("ManualDriveInstruction")
 
 
 class ParameterConfiguration(JSONSerializable):
@@ -74,6 +80,38 @@ class ParameterConfiguration(JSONSerializable):
         """ Returns instance from json string """
         dict = json.loads(json_str)
         return ParameterConfiguration(dict['temp'])
+
+    def to_json(self) -> str:
+        return super().to_json("ParameterConfiguration")
+
+
+class MapData:
+    """ A graph respresentation of a map """
+
+    def __init__(self, map: dict = {}):
+        self.map = map
+
+    def add_node(self, node: str):
+        """ Adds a node to the map """
+        if node in self.map:
+            print("Map already contains \"{}\"".format(node))
+            return
+
+        self.map[node] = []
+
+    def connect_node(self, node_1: str, node_2: str, weight: int):
+        """ Connects node_1 to node_2 with weight. Adds nodes if not already in map. """
+        if node_1 not in self.map:
+            self.add_node(node_1)
+
+        if node_2 not in self.map:
+            self.add_node(node_2)
+
+        self.map[node_1].append({node_2: weight})
+
+    def to_json(self) -> str:
+        """ Creates a JSON-object of a map, with the type as top level key """
+        return "{" + "\"{}\": {}".format("MapData", json.dumps(self.map)) + "}"
 
 
 def get_type_and_data(json_str):

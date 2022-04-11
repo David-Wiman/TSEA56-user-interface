@@ -2,14 +2,14 @@ from PySide6.QtCore import QObject, QTimer
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import DriveInstruction, get_type_and_data
+from data import ManualDriveInstruction, get_type_and_data
 
 # Based on:
 #
 # https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
 
 PORT = 1234
-URL = "192.168.1.30"
+URL = "192.168.1.31"
 
 
 class Socket(QObject):
@@ -90,7 +90,7 @@ def send_message(socket: Socket):
         print("Connection failed")
 
     socket.send_message(
-        DriveInstruction(throttle=10.0).to_json("ManualDriveInstruction"))
+        ManualDriveInstruction(throttle=10.0).to_json())
 
     QTimer.singleShot(1500, socket.disconnect())
 
