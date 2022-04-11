@@ -1,10 +1,10 @@
-from time import time
+from time import localtime, time
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
-                               QLabel, QPushButton, QSizePolicy,
-                               QStackedWidget, QTableWidget, QTabWidget,
+                               QLabel, QPlainTextEdit, QPushButton,
+                               QSizePolicy, QStackedWidget, QTabWidget,
                                QToolButton, QVBoxLayout, QWidget)
 
 from backend import backend_signals, socket
@@ -110,20 +110,28 @@ class PlanWidget(PlaceHolder):
 
 
 class LogWidget(QTabWidget):
-    """ A console that displays logs recieved from the car """
+    """ A log that displays log data from backend """
 
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        logger = QTableWidget(self)
-        logger.setRowCount(24)
-        logger.setColumnCount(4)
-        logger.setHorizontalHeaderLabels(
-            ("Message;Severity;Node;Timestamp").split(";"))
-        logger.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.logger = QPlainTextEdit(self)
+        self.logger.setReadOnly(True)
+        self.text = ""
+        backend_signals().log_msg.connect(self.add_log)  # Add log from backend
 
-        self.addTab(logger, "Logg")
+        self.addTab(self.logger, "Logg")
+
+    def add_log(self, severity, message):
+        """ Adds message to the log widget on GUI """
+        current_time = \
+            str(localtime().tm_hour).zfill(2) + ":" + \
+            str(localtime().tm_min).zfill(2) + ":" + \
+            str(localtime().tm_sec).zfill(2)
+
+        entry = "[" + current_time + " - " + severity + "]\t" + message
+        self.logger.appendPlainText(entry)
 
 
 class ControlsWidget(QStackedWidget):

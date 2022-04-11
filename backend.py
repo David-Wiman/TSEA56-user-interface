@@ -15,6 +15,7 @@ class BackendSignals(QObject):
     _instance = None
 
     new_car_data = Signal(CarData)  # New car data has been recieved
+    log_msg = Signal(str, str)  # Severity and message of log
 
 
 def backend_signals():
@@ -40,21 +41,23 @@ class Socket(QObject):
 
     def connect(self):
         """ Connect socket to host """
-        print("Connecting to server....")
+        self.log("Connecting to server....")
         self.pSocket.connectToHost(URL, PORT)
 
     def disconnect(self):
         """ Disconnect socket from host """
-        print("Disconnecting from server...")
+        self.log("Disconnecting from server...")
         self.pSocket.disconnectFromHost()
 
     def hard_stop_car(self):
         """ Sends emergency stop signal to car """
+        self.log("EMERGENCY STOP", "WARN")
         self.send_message("STOP")
 
     def send_message(self, message: str):
         """ Sends message to server. Throws if connection not valid. """
         if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
+            self.log("No connection to server", "ERROR")
             raise ConnectionError("Socket not Connected")
 
         message += "\n"  # Add terminating char
@@ -75,16 +78,20 @@ class Socket(QObject):
             print("Unknown type: " + type, "\n"+str(data))
 
     def on_error(self, error):
+        print(error)
         if error == QAbstractSocket.ConnectionRefusedError:
-            print('Unable to send data to port: "{}"'.format(PORT))
-            print("trying to reconnect")
+            self.log('Unable to send data to port: "{}"'.format(PORT), "ERROR")
+            self.log("trying to reconnect", "ERROR")
             QTimer.singleShot(1000, self.slotSendMessage)
 
     def on_connected(self):
-        print("Connected")
+        self.log("Connected")
 
     def on_disconnected(self):
-        print("Disconnected")
+        self.log("Disconnected")
+
+    def log(self, message, severity="INFO"):
+        backend_signals().log_msg.emit(severity, message)
 
 
 def socket():
