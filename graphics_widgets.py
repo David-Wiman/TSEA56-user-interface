@@ -1,14 +1,15 @@
 from time import localtime, time
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
-                               QPlainTextEdit, QPushButton, QSizePolicy,
-                               QStackedWidget, QStyle, QTabWidget, QToolButton,
-                               QVBoxLayout, QWidget)
+                               QPlainTextEdit, QPushButton, QScrollArea,
+                               QSizePolicy, QStackedWidget, QStyle, QTabWidget,
+                               QToolButton, QVBoxLayout, QWidget)
 
 from backend import backend_signals, socket
-from data import CarData, ManualDriveInstruction
+from data import (CarData, Direction, ManualDriveInstruction,
+                  SemiDriveInstruction)
 
 
 class PlaceHolder(QLabel):
@@ -123,13 +124,63 @@ class DataWidget(QFrame):
             "INFO", "Saved all car data to \"{}\"".format(self.DATA_FILENAME))
 
 
-class PlanWidget(PlaceHolder):
+class InstructionWidget(QLabel):
+    """ Small widget showing an arrow corresponding to a drive direction """
+
+    def __init__(self, direction: Direction = 1):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFixedSize(90, 120)
+
+        icon_name = ""
+        if direction == Direction.FWRD:
+            icon_name = "up_arrow.png"
+        elif direction == Direction.LEFT:
+            icon_name = "up_arrow.png"
+        elif direction == Direction.RIGHT:
+            icon_name = "up_arrow.png"
+
+        self.setPixmap(QPixmap("res/" + icon_name))
+
+        self.setStyleSheet("border: none")
+
+
+class PlanWidget(QScrollArea):
     """ A box that lists the currently planned driving instructions """
 
     def __init__(self):
-        super().__init__("Plan")
+        super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        self.instructions: list[SemiDriveInstruction] = []
+
+        self.queue = QWidget(self)
+        self.draw_instructions()
+
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setWidgetResizable(True)
+        self.setWidget(self.queue)
+
         self.setStyleSheet("border: 1px solid grey")
+
+    def draw_instructions(self):
+        layout = QHBoxLayout(self.queue)
+        for _ in range(4):
+            layout.addWidget(InstructionWidget())
+        layout.addStretch(1)  # Left align
+
+    def add_instruction(self, instruction: SemiDriveInstruction):
+        self.instructions.append(instruction)
+
+    def remove_instruction(self, id: str):
+        """ Removes instruction, if it exists """
+        self.instructions = [ins for ins in self.instructions if ins.id != id]
+
+    def clear_all(self):
+        """ Remove all instructions and reset widget """
+        self.instructions = []
+        self.queue = QWidget()
+        self.setWidget(self.queue)
 
 
 class LogWidget(QTabWidget):
