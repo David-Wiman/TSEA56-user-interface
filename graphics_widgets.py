@@ -136,9 +136,9 @@ class InstructionWidget(QLabel):
         if direction == Direction.FWRD:
             icon_name = "up_arrow.png"
         elif direction == Direction.LEFT:
-            icon_name = "up_arrow.png"
+            icon_name = "left_arrow.png"
         elif direction == Direction.RIGHT:
-            icon_name = "up_arrow.png"
+            icon_name = "right_arrow.png"
 
         self.setPixmap(QPixmap("res/" + icon_name))
 
@@ -150,37 +150,46 @@ class PlanWidget(QScrollArea):
 
     def __init__(self):
         super().__init__()
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
         self.instructions: list[SemiDriveInstruction] = []
 
-        self.queue = QWidget(self)
-        self.draw_instructions()
-
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidgetResizable(True)
-        self.setWidget(self.queue)
+
+        self.draw_instructions()
 
         self.setStyleSheet("border: 1px solid grey")
 
     def draw_instructions(self):
-        layout = QHBoxLayout(self.queue)
-        for _ in range(4):
-            layout.addWidget(InstructionWidget())
-        layout.addStretch(1)  # Left align
+        queue = QWidget()
+        queue.setStyleSheet("border: none")
+        self.setWidget(queue)
+
+        layout = QHBoxLayout(queue)
+        layout.setSpacing(15)
+
+        for instruction in self.instructions:
+            layout.addWidget(InstructionWidget(instruction.direction))
+
+        layout.addStretch()  # Left align
 
     def add_instruction(self, instruction: SemiDriveInstruction):
+        """ Adds instruction to plan """
         self.instructions.append(instruction)
+
+        layout = self.widget().layout()
+        layout.insertWidget(
+            layout.count()-1, InstructionWidget(instruction.direction))
 
     def remove_instruction(self, id: str):
         """ Removes instruction, if it exists """
         self.instructions = [ins for ins in self.instructions if ins.id != id]
+        self.draw_instructions()  # Redraw queue
 
     def clear_all(self):
         """ Remove all instructions and reset widget """
         self.instructions = []
-        self.queue = QWidget()
-        self.setWidget(self.queue)
+        self.draw_instructions()  # Redraw queue
 
 
 class LogWidget(QTabWidget):
