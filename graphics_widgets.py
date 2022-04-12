@@ -2,10 +2,10 @@ from time import localtime, time
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
-                               QLabel, QPlainTextEdit, QPushButton,
-                               QSizePolicy, QStackedWidget, QTabWidget,
-                               QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
+                               QPlainTextEdit, QPushButton, QSizePolicy,
+                               QStackedWidget, QStyle, QTabWidget, QToolButton,
+                               QVBoxLayout, QWidget)
 
 from backend import backend_signals, socket
 from data import CarData, ManualDriveInstruction
@@ -55,20 +55,34 @@ class DataField(QLabel):
 class DataWidget(QFrame):
     """ A box which lists the most recent driving data """
 
+    DATA_FILENAME = "data_output.txt"
+
     def __init__(self):
         super().__init__()
+        self.all_data: list[CarData] = []
 
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.setMinimumWidth(250)
 
         layout = QVBoxLayout(self)
+        layout_h = QHBoxLayout()  # Top label and save button
 
         # Widget title label
-        data_lbl = QLabel(self)
+        data_lbl = QLabel()
         data_lbl.resize(70, 50)
         data_lbl.setText("Data")
         data_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(data_lbl)
+        layout_h.addWidget(data_lbl)
+
+        # Save data button
+        save_btn = QPushButton("Spara")
+        save_btn.setIcon(QStyle.standardIcon(
+            self.style(), QStyle.SP_DialogSaveButton))
+        save_btn.resize(90, 90)
+        save_btn.setStyleSheet("border: none")
+        save_btn.clicked.connect(self.save_data)
+        layout_h.addWidget(save_btn)
+        layout.addLayout(layout_h)
 
         # Widget data labels
         self.labels: list[DataField] = []
@@ -98,6 +112,15 @@ class DataWidget(QFrame):
         self.labels[4].update_data(data.driven_distance)
         self.labels[5].update_data(data.obsticle_distance)
         self.labels[6].update_data(data.lateral_position)
+        self.all_data.append(data)
+
+    def save_data(self):
+        """ Save all car data to file """
+        with open(self.DATA_FILENAME, "w") as file:
+            file.write("\n".join([data.to_json() for data in self.all_data]))
+
+        backend_signals().log_msg.emit(
+            "INFO", "Saved all car data to \"{}\"".format(self.DATA_FILENAME))
 
 
 class PlanWidget(PlaceHolder):
