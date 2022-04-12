@@ -1,14 +1,14 @@
-from time import time
+from time import localtime, time
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QHeaderView,
-                               QLabel, QPushButton, QSizePolicy,
-                               QStackedWidget, QTableWidget, QTabWidget,
-                               QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
+                               QPlainTextEdit, QPushButton, QSizePolicy,
+                               QStackedWidget, QStyle, QTabWidget, QToolButton,
+                               QVBoxLayout, QWidget)
 
-from backend import socket
-from data import DriveInstruction
+from backend import backend_signals, socket
+from data import CarData, ManualDriveInstruction
 
 
 class PlaceHolder(QLabel):
@@ -31,66 +31,96 @@ class MapWidget(PlaceHolder):
         self.setStyleSheet("border: 1px solid grey")
 
 
+class DataField(QLabel):
+    """ Custom label to display car data field """
+
+    def __init__(self, label: str, data, unit: str):
+        super().__init__()
+        self.label = label
+        self.unit = unit
+
+        self.update_data(data)
+        self.resize(90, 50)
+        self.setStyleSheet("border: 0px")
+
+    def update_data(self, data):
+        """ Updates field with new data, but same label and unit """
+        label_padded = self.label + ":\t\t"
+        if len(self.label) < 8:
+            label_padded += "\t"  # Fix alignment for short labels
+
+        self.setText(label_padded + str(data) + " " + self.unit)
+
+
 class DataWidget(QFrame):
     """ A box which lists the most recent driving data """
 
+    DATA_FILENAME = "data_output.txt"
+
     def __init__(self):
         super().__init__()
+        self.all_data: list[CarData] = []
+
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.setMinimumWidth(250)
 
         layout = QVBoxLayout(self)
+        layout_h = QHBoxLayout()  # Top label and save button
 
-        # creating label - Data
-        data_lbl = QLabel(self)
+        # Widget title label
+        data_lbl = QLabel()
         data_lbl.resize(70, 50)
         data_lbl.setText("Data")
         data_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(data_lbl)
+        layout_h.addWidget(data_lbl)
 
-        # creating label - Drive Time
-        drive_time_lbl = QLabel(self)
-        drive_time_lbl.resize(90, 50)
-        drive_time_lbl.setText("Körtid:")
-        drive_time_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(drive_time_lbl)
+        # Save data button
+        save_btn = QPushButton("Spara")
+        save_btn.setIcon(QStyle.standardIcon(
+            self.style(), QStyle.SP_DialogSaveButton))
+        save_btn.resize(90, 90)
+        save_btn.setStyleSheet("border: none")
+        save_btn.clicked.connect(self.save_data)
+        layout_h.addWidget(save_btn)
+        layout.addLayout(layout_h)
 
-        # creating label - Gas
-        gas_lbl = QLabel(self)
-        gas_lbl.resize(90, 50)
-        gas_lbl.setText("Gaspådrag:")
-        gas_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(gas_lbl)
+        # Widget data labels
+        self.labels: list[DataField] = []
+        self.labels.append(DataField("Körtid", 0, "s"))
+        self.labels.append(DataField("Gaspådrag", 0, ""))
+        self.labels.append(DataField("Styrutslag", 0, ""))
+        self.labels.append(DataField("Hastighet", 0, "cm/s"))
+        self.labels.append(DataField("Körsträcka", 0, "cm"))
+        self.labels.append(DataField("Hinderavstånd", 0, "cm"))
+        self.labels.append(DataField("Lateral", 0, "cm"))
+        self.labels.append(DataField("Vinkelavvikelse", 0, "rad"))
 
-        # creating label - Strearing
-        stear_lbl = QLabel(self)
-        stear_lbl.resize(90, 50)
-        stear_lbl.setText("Styrutslag:")
-        stear_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(stear_lbl)
-
-        # creating label - Velocity
-        vel_lbl = QLabel(self)
-        vel_lbl.resize(90, 50)
-        vel_lbl.setText("Hastighet:")
-        vel_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(vel_lbl)
-
-        # creating label - Distance
-        dist_lbl = QLabel(self)
-        dist_lbl.resize(90, 50)
-        dist_lbl.setText("Körsträcka:")
-        dist_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(dist_lbl)
-
-        # creating label - lateral dist
-        lat_lbl = QLabel(self)
-        lat_lbl.resize(90, 50)
-        lat_lbl.setText("Lateral:")
-        lat_lbl.setStyleSheet("border: 0px")
-        layout.addWidget(lat_lbl)
+        for label in self.labels:
+            # Add data labels to screen
+            layout.addWidget(label)
 
         self.setStyleSheet("border: 1px solid grey")
+
+        # Automatically update data when it arrives from socket
+        backend_signals().new_car_data.connect(self.update_data)
+
+    def update_data(self, data: CarData):
+        self.labels[0].update_data(data.time)
+        self.labels[1].update_data(data.throttle)
+        self.labels[2].update_data(data.steering)
+        self.labels[3].update_data(data.velocity)
+        self.labels[4].update_data(data.driven_distance)
+        self.labels[5].update_data(data.obsticle_distance)
+        self.labels[6].update_data(data.lateral_position)
+        self.all_data.append(data)
+
+    def save_data(self):
+        """ Save all car data to file """
+        with open(self.DATA_FILENAME, "w") as file:
+            file.write("\n".join([data.to_json() for data in self.all_data]))
+
+        backend_signals().log_msg.emit(
+            "INFO", "Saved all car data to \"{}\"".format(self.DATA_FILENAME))
 
 
 class PlanWidget(PlaceHolder):
@@ -103,20 +133,28 @@ class PlanWidget(PlaceHolder):
 
 
 class LogWidget(QTabWidget):
-    """ A console that displays logs recieved from the car """
+    """ A log that displays log data from backend """
 
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        logger = QTableWidget(self)
-        logger.setRowCount(24)
-        logger.setColumnCount(4)
-        logger.setHorizontalHeaderLabels(
-            ("Message;Severity;Node;Timestamp").split(";"))
-        logger.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.logger = QPlainTextEdit(self)
+        self.logger.setReadOnly(True)
+        self.text = ""
+        backend_signals().log_msg.connect(self.add_log)  # Add log from backend
 
-        self.addTab(logger, "Logg")
+        self.addTab(self.logger, "Logg")
+
+    def add_log(self, severity, message):
+        """ Adds message to the log widget on GUI """
+        current_time = \
+            str(localtime().tm_hour).zfill(2) + ":" + \
+            str(localtime().tm_min).zfill(2) + ":" + \
+            str(localtime().tm_sec).zfill(2)
+
+        entry = "[" + current_time + " - " + severity + "]\t" + message
+        self.logger.appendPlainText(entry)
 
 
 class ControlsWidget(QStackedWidget):
@@ -255,33 +293,33 @@ class ManualMode(QWidget):
         shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
 
     def send_fwrd(self):
-        self.send_drive_instruction(DriveInstruction(self.CAR_ACC, 0))
+        self.send_drive_instruction(ManualDriveInstruction(self.CAR_ACC, 0))
 
     def send_bwrd(self):
-        self.send_drive_instruction(DriveInstruction(0, 0))
+        self.send_drive_instruction(ManualDriveInstruction(0, 0))
 
     def send_right(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, self.FULL_STEER))
+            ManualDriveInstruction(self.CAR_ACC, self.FULL_STEER))
 
     def send_left(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, -self.FULL_STEER))
+            ManualDriveInstruction(self.CAR_ACC, -self.FULL_STEER))
 
     def send_fwrd_right(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, self.HALF_STEER))
+            ManualDriveInstruction(self.CAR_ACC, self.HALF_STEER))
 
     def send_fwrd_left(self):
         self.send_drive_instruction(
-            DriveInstruction(self.CAR_ACC, -self.HALF_STEER))
+            ManualDriveInstruction(self.CAR_ACC, -self.HALF_STEER))
 
-    def send_drive_instruction(self, drive_instruction):
+    def send_drive_instruction(self, drive_instruction: ManualDriveInstruction):
         # Sends drive intruction at approximately MAX_SEND_RATE (Hz)
         new_time = time()
         if new_time - self.timer > self.MAX_SEND_RATE:
             try:
-                socket().send_message(drive_instruction.to_json("ManualDriveInstruction"))
+                socket().send_message(drive_instruction.to_json())
             except ConnectionError as e:
                 print("ERROR:", e)
 

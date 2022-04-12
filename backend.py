@@ -1,19 +1,32 @@
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import DriveInstruction, get_type_and_data
-
-# Based on:
-#
-# https://stackoverflow.com/questions/35237245/how-to-create-a-websocket-client-by-using-qwebsocket-in-pyqt5
+from data import CarData, ManualDriveInstruction, get_type_and_data
 
 PORT = 1234
-URL = "192.168.1.30"
+URL = "192.168.1.31"
+
+
+class BackendSignals(QObject):
+    """ A singleton class, containing the signals from the backend needed to update UI """
+
+    # Maintain only one instance
+    _instance = None
+
+    new_car_data = Signal(CarData)  # New car data has been recieved
+    log_msg = Signal(str, str)  # Severity and message of log
+
+
+def backend_signals():
+    """ Returns instance of the current backend signals """
+    if BackendSignals._instance is None:
+        BackendSignals._instance = BackendSignals(QApplication.instance())
+    return BackendSignals._instance
 
 
 class Socket(QObject):
-    """A singleton class, representing a tcp socket for communication with the car"""
+    """ A singleton class, representing a tcp socket for communication with the car """
 
     # Maintain only one websocket instance
     _instance = None
@@ -28,21 +41,23 @@ class Socket(QObject):
 
     def connect(self):
         """ Connect socket to host """
-        print("Connecting to server....")
+        self.log("Connecting to server....")
         self.pSocket.connectToHost(URL, PORT)
 
     def disconnect(self):
         """ Disconnect socket from host """
-        print("Disconnecting from server...")
+        self.log("Disconnecting from server...")
         self.pSocket.disconnectFromHost()
 
     def hard_stop_car(self):
         """ Sends emergency stop signal to car """
+        self.log("EMERGENCY STOP", "WARN")
         self.send_message("STOP")
 
     def send_message(self, message: str):
         """ Sends message to server. Throws if connection not valid. """
         if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
+            self.log("No connection to server", "ERROR")
             raise ConnectionError("Socket not Connected")
 
         message += "\n"  # Add terminating char
@@ -58,21 +73,25 @@ class Socket(QObject):
         type, data = get_type_and_data(message)
 
         if type == "CarData":
-            print("Is car data!", data)
+            backend_signals().new_car_data.emit(CarData.from_json(data))
         else:
             print("Unknown type: " + type, "\n"+str(data))
 
     def on_error(self, error):
+        print(error)
         if error == QAbstractSocket.ConnectionRefusedError:
-            print('Unable to send data to port: "{}"'.format(PORT))
-            print("trying to reconnect")
+            self.log('Unable to send data to port: "{}"'.format(PORT), "ERROR")
+            self.log("trying to reconnect", "ERROR")
             QTimer.singleShot(1000, self.slotSendMessage)
 
     def on_connected(self):
-        print("Connected")
+        self.log("Connected")
 
     def on_disconnected(self):
-        print("Disconnected")
+        self.log("Disconnected")
+
+    def log(self, message, severity="INFO"):
+        backend_signals().log_msg.emit(severity, message)
 
 
 def socket():
@@ -90,7 +109,7 @@ def send_message(socket: Socket):
         print("Connection failed")
 
     socket.send_message(
-        DriveInstruction(throttle=10.0).to_json("ManualDriveInstruction"))
+        ManualDriveInstruction(throttle=10.0).to_json())
 
     QTimer.singleShot(1500, socket.disconnect())
 
