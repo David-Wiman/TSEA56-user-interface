@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 
 class JSONSerializable:
@@ -47,9 +48,6 @@ class CarData(JSONSerializable):
 class ManualDriveInstruction(JSONSerializable):
     """ Simple dataclass to represent a drive instruction for the car """
 
-    throttle: int
-    steering: int
-
     def __init__(self, throttle: int = 0, steering: int = 0):
         self.throttle = throttle
         self.steering = steering
@@ -63,9 +61,26 @@ class ManualDriveInstruction(JSONSerializable):
         return super().to_json("ManualDriveInstruction")
 
 
+class Direction:
+    """ Available directions the car can drive in the autonomous modes"""
+    LEFT = 0
+    FWRD = 1
+    RIGHT = 2
+
+
+class SemiDriveInstruction(JSONSerializable):
+    """ Simple dataclass to represent a semi-autonomous drive instruction for the car """
+
+    def __init__(self, direction: Direction = Direction.FWRD):
+        self.direction = direction
+        self.id = str(uuid4())  # Assign unique id to instruction
+
+    def to_json(self) -> str:
+        return super().to_json("SemiDriveInstruction")
+
+
 class ParameterConfiguration(JSONSerializable):
     """ Simple dataclass to represent a parameter configuration for the car """
-    temp: int
 
     def __init__(self, temp: int = 0):
         self.temp = temp
@@ -80,7 +95,7 @@ class ParameterConfiguration(JSONSerializable):
 
 
 class MapData:
-    """ A graph respresentation of a map """
+    """ A graph representation of a map """
 
     def __init__(self, map: dict = {}):
         self.map = map
