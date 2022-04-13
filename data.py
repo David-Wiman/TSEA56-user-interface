@@ -87,13 +87,15 @@ class SemiDriveInstruction(JSONSerializable):
 class ParameterConfiguration(JSONSerializable):
     """ Simple dataclass to represent a parameter configuration for the car """
 
-    def __init__(self, temp: int = 0):
-        self.temp = temp
+    def __init__(self, steering_kp: int = 0, steering_kd: int = 0, speed_kp: int = 0):
+        self.steering_kp = steering_kp
+        self.steering_kd = steering_kd
+        self.speed_kp = speed_kp
 
     def from_json(json_str: str):
         """ Returns instance from json string """
         dict = json.loads(json_str)
-        return ParameterConfiguration(dict["temp"])
+        return ParameterConfiguration(dict["steering_kp"], dict["steering_kd"], dict["speed_kp"])
 
     def to_json(self) -> str:
         return super().to_json("ParameterConfiguration")

@@ -2,14 +2,15 @@ from time import localtime, time
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
-from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
-                               QPlainTextEdit, QPushButton, QScrollArea,
-                               QSizePolicy, QStackedWidget, QStyle, QTabWidget,
-                               QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
+                               QLabel, QLineEdit, QPlainTextEdit, QPushButton,
+                               QScrollArea, QSizePolicy, QStackedWidget,
+                               QStyle, QTabWidget, QToolButton, QVBoxLayout,
+                               QWidget)
 
 from backend import backend_signals, socket
 from data import (CarData, Direction, ManualDriveInstruction,
-                  SemiDriveInstruction)
+                  ParameterConfiguration, SemiDriveInstruction)
 
 
 class PlaceHolder(QLabel):
@@ -233,6 +234,65 @@ class LogWidget(QTabWidget):
         self.logger.appendPlainText(entry)
 
 
+class ParameterWidget(QWidget):
+    """ A popup widget where parameters can be configured """
+
+    def __init__(self):
+        super().__init__()
+
+        layout = QFormLayout(self)
+        layout.setSpacing(10)
+
+        # Add fields for each parameter
+        self.steer_kp_textbox = QLineEdit()
+        self.steer_kd_textbox = QLineEdit()
+        self.speed_kp_textbox = QLineEdit()
+        layout.addRow(QLabel("STEER_KP"), self.steer_kp_textbox)
+        layout.addRow(QLabel("STEER_KD"), self.steer_kd_textbox)
+        layout.addRow(QLabel("SPEED_KP"), self.speed_kp_textbox)
+
+        btn_layout = QHBoxLayout()
+
+        # Send and close buttons
+        send_btn = QPushButton("Skicka")
+        send_btn.clicked.connect(self.send_params)
+        cancel_btn = QPushButton("Stäng")
+        cancel_btn.clicked.connect(self.close_popup)
+
+        btn_layout.addWidget(send_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addRow(btn_layout)
+
+    def send_params(self):
+        """ Send entered paramters to car """
+        backend_signals().log_msg.emit("INFO", "Sending new parameters to car")
+
+        # Save entered params in object
+        self.params.steering_kp = int(self.steer_kp_textbox.text())
+        self.params.steering_kd = int(self.steer_kd_textbox.text())
+        self.params.speed_kp = int(self.speed_kp_textbox.text())
+
+        socket().send_message(self.params.to_json())
+        self.close_popup()
+
+    def close_popup(self):
+        """ Close popup """
+        self.close()
+
+    def open_popup(self, params=ParameterConfiguration()):
+        """ Open parmater configuration dialogbox, provide current params instance """
+        self.params = params  # Update params
+
+        # Autofill text boxes with current params
+        self.steer_kp_textbox.setText(str(self.params.steering_kp))
+        self.steer_kd_textbox.setText(str(self.params.steering_kd))
+        self.speed_kp_textbox.setText(str(self.params.speed_kp))
+
+        self.setMinimumSize(300, 60)
+        self.setWindowTitle("Parameterkonfiguration")
+        self.show()
+
+
 class ControlsWidget(QWidget):
     """ A controls area where the user can control the car. Has different modes. """
 
@@ -245,9 +305,13 @@ class ControlsWidget(QWidget):
         layout = QHBoxLayout(self)
         layout_l = QVBoxLayout()
 
+        self.param_data = ParameterConfiguration()  # Current param config
+        param = ParameterWidget()
+
         # Parameter button
         param_btn = QPushButton("Parametrar")
         param_btn.setFixedSize(125, 60)
+        param_btn.clicked.connect(lambda: param.open_popup(self.param_data))
         layout_l.addWidget(param_btn)
 
         # Emergency stop button
