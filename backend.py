@@ -58,6 +58,7 @@ class Socket(QObject):
         """ Sends message to server. Throws if connection not valid. """
         if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
             self.log("No connection to server", "ERROR")
+            print("Error sending:\n", message)
             raise ConnectionError("Socket not Connected")
 
         message += "\n"  # Add terminating char
