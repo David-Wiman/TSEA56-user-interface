@@ -1,7 +1,7 @@
 from time import localtime, time
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QPlainTextEdit, QPushButton, QScrollArea,
                                QSizePolicy, QStackedWidget, QStyle, QTabWidget,
@@ -217,7 +217,7 @@ class LogWidget(QTabWidget):
         self.logger.appendPlainText(entry)
 
 
-class ControlsWidget(QStackedWidget):
+class ControlsWidget(QWidget):
     """ A controls area where the user can control the car. Has different modes. """
 
     widget_index = {"manual": 0, "semi": 1, "auto": 2}
@@ -226,111 +226,100 @@ class ControlsWidget(QStackedWidget):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        layout = QHBoxLayout(self)
+        layout_l = QVBoxLayout()
+
+        # create push button - parameter
+        param_btn = QPushButton("Parametrar")
+        param_btn.setFixedSize(125, 60)
+        layout_l.addWidget(param_btn)
+
+        # create push button - stop
+        stop_btn = QPushButton('STOP')
+        stop_btn.setFixedSize(125, 125)
+        stop_btn.setStyleSheet(
+            "background-color: red; border : 2px solid darkred;font-size: 20px;font-family: Arial")
+        stop_btn.clicked.connect(socket().hard_stop_car)
+        layout_l.addWidget(stop_btn)
+
+        layout.addLayout(layout_l)
+
+        self.controls = QStackedWidget()
+        self.controls.setStyleSheet("border: none")
+
         manual_mode = ManualMode()
-        semi_mode = PlaceHolder("Semi autonomous controls")
+        semi_mode = SemiMode()
         auto_mode = PlaceHolder("Fully autonomous controls")
 
-        self.insertWidget(self.widget_index["manual"], manual_mode)
-        self.insertWidget(self.widget_index["semi"], semi_mode)
-        self.insertWidget(self.widget_index["auto"], auto_mode)
+        self.controls.insertWidget(self.widget_index["manual"], manual_mode)
+        self.controls.insertWidget(self.widget_index["semi"], semi_mode)
+        self.controls.insertWidget(self.widget_index["auto"], auto_mode)
+        layout.addWidget(self.controls)
 
         self.setStyleSheet("border: 1px solid grey")
 
     def set_index(self, mode):
-        self.setCurrentIndex(self.widget_index[mode])
+        self.controls.setCurrentIndex(self.widget_index[mode])
 
 
 class ManualMode(QWidget):
     """ The buttons needed for manual driving """
 
-    MAX_SEND_RATE = 1/10  # Frequency (Hz)
     CAR_ACC = 100         # Max throttle
     FULL_STEER = 280      # Max steer (right)
     HALF_STEER = 100      # Half steer
+
+    class DriveButton(QToolButton):
+        """ A button for steering the car in manual mode"""
+
+        MAX_SEND_RATE = 1/10  # Frequency (Hz)
+
+        def __init__(self, action, arrow):
+            super().__init__()
+
+            size_policy = QSizePolicy()
+            size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
+            size_policy.setVerticalPolicy(QSizePolicy.Expanding)
+            size_policy.setWidthForHeight(True)
+
+            self.clicked.connect(action)
+            self.setAutoRepeat(True)
+            self.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
+            self.setArrowType(arrow)
+            self.setSizePolicy(size_policy)
+            self.setStyleSheet("border: 1px solid grey")
 
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-        # create push button - parameter
-        param_btn = QPushButton("Parametrar", self)
-        param_btn.setFixedSize(110, 60)
-
-        # create push button - stop
-        stop_btn = QPushButton('STOP', self)
-        stop_btn.setFixedSize(110, 110)
-        stop_btn.setStyleSheet(
-            "background-color: red; border : 2px solid darkred;font-size: 20px;font-family: Arial")
-        stop_btn.clicked.connect(socket().hard_stop_car)
-
-        layout = QHBoxLayout(self)
-
-        layout_left = QVBoxLayout()
-        layout_right = QGridLayout()
-        layout_left.addWidget(param_btn)
-        layout_left.addWidget(stop_btn)
-
-        self.create_drive_buttons(layout_right)
+        self.create_drive_buttons()
         self.setup_keyboard_shortcuts()
-
-        layout.addLayout(layout_left)
-        layout.addLayout(layout_right)
 
         self.timer = time()
 
-    def create_drive_buttons(self, layout):
-        size_policy = QSizePolicy()
-        size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
-        size_policy.setVerticalPolicy(QSizePolicy.Expanding)
-        size_policy.setWidthForHeight(True)
+    def create_drive_buttons(self):
+        layout = QGridLayout(self)
 
-        fwrd = QToolButton()
-        fwrd.clicked.connect(self.send_fwrd)
-        fwrd.setAutoRepeat(True)
-        fwrd.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        fwrd.setArrowType(Qt.UpArrow)
-        fwrd.setSizePolicy(size_policy)
+        fwrd = self.DriveButton(self.send_fwrd, Qt.UpArrow)
         layout.addWidget(fwrd, 0, 1)
 
-        bwrd = QToolButton()
-        bwrd.clicked.connect(self.send_bwrd)
-        bwrd.setAutoRepeat(True)
-        bwrd.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        bwrd.setArrowType(Qt.DownArrow)
-        bwrd.setSizePolicy(size_policy)
+        bwrd = self.DriveButton(self.send_bwrd, Qt.DownArrow)
         layout.addWidget(bwrd, 1, 1)
 
-        left = QToolButton()
-        left.clicked.connect(self.send_left)
-        left.setAutoRepeat(True)
-        left.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        left.setArrowType(Qt.LeftArrow)
-        left.setSizePolicy(size_policy)
+        left = self.DriveButton(self.send_left, Qt.LeftArrow)
         layout.addWidget(left, 1, 0)
 
-        right = QToolButton()
-        right.clicked.connect(self.send_right)
-        right.setAutoRepeat(True)
-        right.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        right.setArrowType(Qt.RightArrow)
-        right.setSizePolicy(size_policy)
+        right = self.DriveButton(self.send_right, Qt.RightArrow)
         layout.addWidget(right, 1, 2)
 
-        fwrd_right = QToolButton()
-        fwrd_right.clicked.connect(self.send_fwrd_right)
-        fwrd_right.setAutoRepeat(True)
-        fwrd_right.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        fwrd_right.setArrowType(Qt.NoArrow)
-        fwrd_right.setSizePolicy(size_policy)
+        fwrd_right = self.DriveButton(self.send_fwrd_right, Qt.NoArrow)
         layout.addWidget(fwrd_right, 0, 2)
 
-        fwrd_left = QToolButton()
-        fwrd_left.clicked.connect(self.send_fwrd_left)
-        fwrd_left.setAutoRepeat(True)
-        fwrd_left.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        fwrd_left.setArrowType(Qt.NoArrow)
-        fwrd_left.setSizePolicy(size_policy)
+        fwrd_left = self.DriveButton(self.send_fwrd_left, Qt.NoArrow)
         layout.addWidget(fwrd_left, 0, 0)
+
+        self.setLayout(layout)
 
     def setup_keyboard_shortcuts(self):
         """ Create WASD keybord shortcuts """
@@ -377,13 +366,51 @@ class ManualMode(QWidget):
     def send_drive_instruction(self, drive_instruction: ManualDriveInstruction):
         # Sends drive intruction at approximately MAX_SEND_RATE (Hz)
         new_time = time()
-        if new_time - self.timer > self.MAX_SEND_RATE:
-            try:
-                socket().send_message(drive_instruction.to_json())
-            except ConnectionError as e:
-                print("ERROR:", e)
+        if new_time - self.timer > self.DriveButton.MAX_SEND_RATE:
+            socket().send_message(drive_instruction.to_json())
 
-            self.timer = new_time  # Reset timer
+        self.timer = new_time  # Reset timer
+
+
+class SemiMode(QWidget):
+    """ Buttons needed to drive the car in semi-autonomous mode """
+
+    class DriveButton(QPushButton):
+        """ A button for steering the car in semi-autonomous mode  """
+        size_policy = QSizePolicy()
+        size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
+        size_policy.setVerticalPolicy(QSizePolicy.Expanding)
+
+        def __init__(self, action, icon_path):
+            super().__init__()
+            self.setIcon(QIcon(icon_path))
+            self.setIconSize(QSize(90, 120))
+            self.clicked.connect(action)
+            self.setSizePolicy(self.size_policy)
+            self.setStyleSheet("border: 1px solid grey")
+
+    def __init__(self):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+        layout = QHBoxLayout(self)
+
+        left_btn = self.DriveButton(self.send_left, "res/left_arrow.png")
+        fwrd_btn = self.DriveButton(self.send_fwrd, "res/up_arrow.png")
+        right_btn = self.DriveButton(self.send_right, "res/right_arrow.png")
+
+        layout.addWidget(left_btn)
+        layout.addWidget(fwrd_btn)
+        layout.addWidget(right_btn)
+
+    def send_left(self):
+        socket().send_message(SemiDriveInstruction(Direction.LEFT).to_json())
+
+    def send_fwrd(self):
+        socket().send_message(SemiDriveInstruction(Direction.FWRD).to_json())
+
+    def send_right(self):
+        socket().send_message(SemiDriveInstruction(Direction.RIGHT).to_json())
 
 
 class ButtonsWidget(QWidget):
