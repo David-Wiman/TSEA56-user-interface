@@ -54,23 +54,23 @@ class Socket(QObject):
 
     def connect(self):
         """ Connect socket to host """
-        self.log("Connecting to server....")
+        self.log("Connecting to car....")
         self.pSocket.connectToHost(URL, PORT)
 
     def disconnect(self):
         """ Disconnect socket from host """
-        self.log("Disconnecting from server...")
+        self.log("Disconnecting from car...")
         self.pSocket.disconnectFromHost()
 
-    def hard_stop_car(self):
+    def emergency_stop_car(self):
         """ Sends emergency stop signal to car """
         self.log("EMERGENCY STOP", "WARN")
         self.send_message("STOP")
 
     def send_message(self, message: str):
-        """ Sends message to server. Throws if connection not valid. """
+        """ Sends message to car. Throws if connection not valid. """
         if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
-            self.log("No connection to server", "ERROR")
+            self.log("No connection to car", "ERROR")
             print("Error sending:\n", message)
             raise ConnectionError("Socket not Connected")
 
