@@ -2,24 +2,37 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import CarData, ManualDriveInstruction, get_type_and_data
+from data import (CarData, ManualDriveInstruction, SemiDriveInstruction,
+                  get_type_and_data)
 
 PORT = 1234
 URL = "192.168.1.31"
 
 
 class BackendSignals(QObject):
-    """ A singleton class, containing the signals from the backend needed to update UI """
+    """ A singleton class, containing the signals needed to update UI """
 
     # Maintain only one instance
     _instance = None
 
-    new_car_data = Signal(CarData)  # New car data has been recieved
-    log_msg = Signal(str, str)  # Severity and message of log
+    new_car_data = Signal(CarData)
+    """ New car data has been recieved from the car"""
+
+    log_msg = Signal(str, str)
+    """ New severity and message has been sent to logger """
+
+    new_semi_instruction = Signal(SemiDriveInstruction)
+    """ New semi-auto instruction has been sent """
+
+    remove_semi_instruction = Signal(str)
+    """ Call to remove a semi-auto instruction, with provided id """
+
+    clear_semi_instructions = Signal()
+    """ Removes all semi-auto instructions for ui """
 
 
 def backend_signals():
-    """ Returns instance of the current backend signals """
+    """ Returns instance of the current BackendSignals """
     if BackendSignals._instance is None:
         BackendSignals._instance = BackendSignals(QApplication.instance())
     return BackendSignals._instance
@@ -120,9 +133,6 @@ if __name__ == '__main__':
     client = Socket(app)
 
     QTimer.singleShot(1100, lambda: send_message(client))
-    #QTimer.singleShot(2000, lambda: ping(client))
-    #QTimer.singleShot(3000, lambda: send_message(client, "YO!"))
-    #QTimer.singleShot(5000, lambda: close)
     QTimer.singleShot(10000, app.exit)
 
     app.exec()

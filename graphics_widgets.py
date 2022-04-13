@@ -158,6 +158,11 @@ class PlanWidget(QScrollArea):
 
         self.draw_instructions()
 
+        # Update gui when instructions are created or deleted
+        backend_signals().new_semi_instruction.connect(self.add_instruction)
+        backend_signals().remove_semi_instruction.connect(self.remove_instruction)
+        backend_signals().clear_semi_instructions.connect(self.clear_all)
+
         self.setStyleSheet("border: 1px solid grey")
 
     def draw_instructions(self):
@@ -183,7 +188,15 @@ class PlanWidget(QScrollArea):
 
     def remove_instruction(self, id: str):
         """ Removes instruction, if it exists """
+        list_len = len(self.instructions)
         self.instructions = [ins for ins in self.instructions if ins.id != id]
+
+        if len(self.instructions) == list_len:
+            # Id was not in list
+            backend_signals().log_msg.emit(
+                "ERROR", "Instruction with id \"{}\" not found".format(id))
+            return
+
         self.draw_instructions()  # Redraw queue
 
     def clear_all(self):
@@ -404,13 +417,18 @@ class SemiMode(QWidget):
         layout.addWidget(right_btn)
 
     def send_left(self):
-        socket().send_message(SemiDriveInstruction(Direction.LEFT).to_json())
+        self.send(SemiDriveInstruction(Direction.LEFT))
 
     def send_fwrd(self):
-        socket().send_message(SemiDriveInstruction(Direction.FWRD).to_json())
+        self.send(SemiDriveInstruction(Direction.FWRD))
 
     def send_right(self):
-        socket().send_message(SemiDriveInstruction(Direction.RIGHT).to_json())
+        self.send(SemiDriveInstruction(Direction.RIGHT))
+
+    def send(self, instruction):
+        """ Send instruction to car and plan widget """
+        socket().send_message(instruction.to_json())
+        backend_signals().new_semi_instruction.emit(instruction)
 
 
 class ButtonsWidget(QWidget):
