@@ -75,6 +75,11 @@ class SemiDriveInstruction(JSONSerializable):
         self.direction = direction
         self.id = str(uuid4())  # Assign unique id to instruction
 
+    def from_json(json_str: str):
+        """ Returns instance from json string """
+        dict = json.loads(json_str)
+        return SemiDriveInstruction(dict["direction"], dict["id"])
+
     def to_json(self) -> str:
         return super().to_json("SemiDriveInstruction")
 
