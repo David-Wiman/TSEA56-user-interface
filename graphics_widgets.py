@@ -113,6 +113,7 @@ class DataWidget(QFrame):
         self.labels[4].update_data(data.driven_distance)
         self.labels[5].update_data(data.obsticle_distance)
         self.labels[6].update_data(data.lateral_position)
+        self.labels[7].update_data(data.angle)
         self.all_data.append(data)  # Add data to history
 
     def save_data(self):

@@ -83,7 +83,8 @@ class Socket(QObject):
     def on_recieved(self):
         bytes = self.pSocket.readAll()
         print("Reading data:", bytes)
-        message = str(bytes)
+
+        message = str(bytes)[2:-1]  # Extract message
         type, data = get_type_and_data(message)
 
         if type == "DriveData":
