@@ -2,7 +2,7 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import (CarData, ManualDriveInstruction, SemiDriveInstruction,
+from data import (DriveData, ManualDriveInstruction, SemiDriveInstruction,
                   get_type_and_data)
 
 PORT = 1234
@@ -15,8 +15,8 @@ class BackendSignals(QObject):
     # Maintain only one instance
     _instance = None
 
-    new_car_data = Signal(CarData)
-    """ New car data has been recieved from the car"""
+    new_drive_data = Signal(DriveData)
+    """ New drive data has been recieved from the car"""
 
     log_msg = Signal(str, str)
     """ New severity and message has been sent to logger """
@@ -86,8 +86,8 @@ class Socket(QObject):
         message = str(bytes)
         type, data = get_type_and_data(message)
 
-        if type == "CarData":
-            backend_signals().new_car_data.emit(CarData.from_json(data))
+        if type == "DriveData":
+            backend_signals().new_drive_data.emit(DriveData.from_json(data))
         else:
             print("Unknown type: " + type, "\n"+str(data))
 

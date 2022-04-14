@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
                                QWidget)
 
 from backend import backend_signals, socket
-from data import (CarData, Direction, ManualDriveInstruction,
+from data import (Direction, DriveData, ManualDriveInstruction,
                   ParameterConfiguration, SemiDriveInstruction)
 
 
@@ -39,7 +39,7 @@ class DataWidget(QFrame):
     DATA_FILENAME = "data_output.txt"
 
     class DataField(QLabel):
-        """ Custom label to display car data field """
+        """ Custom label to display car's drive data field """
 
         def __init__(self, label: str, data, unit: str):
             super().__init__()
@@ -60,7 +60,7 @@ class DataWidget(QFrame):
 
     def __init__(self):
         super().__init__()
-        self.all_data: list[CarData] = []
+        self.all_data: list[DriveData] = []
 
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.setMinimumWidth(250)
@@ -103,9 +103,9 @@ class DataWidget(QFrame):
         self.setStyleSheet("border: 1px solid grey")
 
         # Automatically update data when it arrives from socket
-        backend_signals().new_car_data.connect(self.update_data)
+        backend_signals().new_drive_data.connect(self.update_data)
 
-    def update_data(self, data: CarData):
+    def update_data(self, data: DriveData):
         self.labels[0].update_data(data.time)
         self.labels[1].update_data(data.throttle)
         self.labels[2].update_data(data.steering)
@@ -116,12 +116,12 @@ class DataWidget(QFrame):
         self.all_data.append(data)  # Add data to history
 
     def save_data(self):
-        """ Save all car data to file """
+        """ Save all drive data to file """
         with open(self.DATA_FILENAME, "w") as file:
             file.write("\n".join([data.to_json() for data in self.all_data]))
 
         backend_signals().log_msg.emit(
-            "INFO", "Saved all car data to \"{}\"".format(self.DATA_FILENAME))
+            "INFO", "Saved all drive data to \"{}\"".format(self.DATA_FILENAME))
 
 
 class PlanWidget(QScrollArea):

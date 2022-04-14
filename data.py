@@ -12,8 +12,8 @@ class JSONSerializable:
         return "{" + "\"{}\": {}".format(type_name, payload) + "}"
 
 
-class CarData(JSONSerializable):
-    """ Simple dataclass to represent the car's status data """
+class DriveData(JSONSerializable):
+    """ Simple dataclass to represent the car's drive data """
 
     def __init__(self,
                  time: int = 0,
@@ -36,13 +36,13 @@ class CarData(JSONSerializable):
     def from_json(json_str: str):
         """ Returns instance from json string """
         dict = json.loads(json_str)
-        return CarData(dict["time"], dict["throttle"],
-                       dict["steering"], dict["velocity"],
-                       dict["driven_distance"], dict["obsticle_distance"],
-                       dict["lateral_position"], dict["angle"])
+        return DriveData(dict["time"], dict["throttle"],
+                         dict["steering"], dict["velocity"],
+                         dict["driven_distance"], dict["obsticle_distance"],
+                         dict["lateral_position"], dict["angle"])
 
     def to_json(self) -> str:
-        return super().to_json("CarData")
+        return super().to_json("DriveData")
 
 
 class ManualDriveInstruction(JSONSerializable):
