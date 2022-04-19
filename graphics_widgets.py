@@ -94,7 +94,7 @@ class DataWidget(QFrame):
         self.labels.append(self.DataField("Körsträcka", 0, "cm"))
         self.labels.append(self.DataField("Hinderavstånd", 0, "cm"))
         self.labels.append(self.DataField("Lateral", 0, "cm"))
-        self.labels.append(self.DataField("Vinkelavvikelse", 0, "rad"))
+        self.labels.append(self.DataField("Vinkelavvikelse", 0, "grader"))
 
         for label in self.labels:
             # Add data labels to screen
@@ -106,12 +106,12 @@ class DataWidget(QFrame):
         backend_signals().new_drive_data.connect(self.update_data)
 
     def update_data(self, data: DriveData):
-        self.labels[0].update_data(data.time)
+        self.labels[0].update_data(data.elapsed_time)
         self.labels[1].update_data(data.throttle)
         self.labels[2].update_data(data.steering)
-        self.labels[3].update_data(data.velocity)
-        self.labels[4].update_data(data.driven_distance)
-        self.labels[5].update_data(data.obsticle_distance)
+        self.labels[3].update_data(data.speed)
+        self.labels[4].update_data(data.driving_distance)
+        self.labels[5].update_data(data.obstacle_distance)
         self.labels[6].update_data(data.lateral_position)
         self.labels[7].update_data(data.angle)
         self.all_data.append(data)  # Add data to history

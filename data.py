@@ -16,28 +16,28 @@ class DriveData(JSONSerializable):
     """ Simple dataclass to represent the car's drive data """
 
     def __init__(self,
-                 time: int = 0,
+                 elapsed_time: int = 0,
                  throttle: int = 0,
                  steering: int = 0,
-                 velocity: int = 0,
-                 driven_distance: int = 0,
-                 obsticle_distance: int = 0,
+                 speed: int = 0,
+                 driving_distance: int = 0,
+                 obstacle_distance: int = 0,
                  lateral_position: int = 0,
-                 angle: float = 0):
-        self.time = time
+                 angle: int = 0):
+        self.elapsed_time = elapsed_time
         self.throttle = throttle
         self.steering = steering
-        self.velocity = velocity
-        self.driven_distance = driven_distance
-        self.obsticle_distance = obsticle_distance
+        self.speed = speed
+        self.driving_distance = driving_distance
+        self.obstacle_distance = obstacle_distance
         self.lateral_position = lateral_position
         self.angle = angle
 
     def from_json(json: dict):
         """ Returns instance from json """
-        return DriveData(json["time"], json["throttle"],
-                         json["steering"], json["velocity"],
-                         json["driven_distance"], json["obsticle_distance"],
+        return DriveData(json["elapsed_time"], json["throttle"],
+                         json["steering"], json["speed"],
+                         json["driving_distance"], json["obstacle_distance"],
                          json["lateral_position"], json["angle"])
 
     def to_json(self) -> str:
