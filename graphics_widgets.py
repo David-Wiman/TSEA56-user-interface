@@ -13,6 +13,11 @@ from data import (Direction, DriveData, ManualDriveInstruction,
                   ParameterConfiguration, SemiDriveInstruction)
 
 
+def LOG(severity: str, message: str):
+    """ Logs message with severity to LogWidget"""
+    backend_signals().log_msg.emit(severity, message)
+
+
 class PlaceHolder(QLabel):
     """ Placeholder widget while app is being developed """
 
@@ -198,8 +203,7 @@ class PlanWidget(QScrollArea):
 
         if len(self.instructions) == list_len:
             # No intruction with the id existed
-            backend_signals().log_msg.emit(
-                "ERROR", "Instruction with id \"{}\" not found".format(id))
+            LOG("ERROR", "Instruction with id \"{}\" not found".format(id))
             return
 
         self.draw_instructions()  # Redraw queue
@@ -266,7 +270,7 @@ class ParameterWidget(QWidget):
 
     def send_params(self):
         """ Send entered paramters to car """
-        backend_signals().log_msg.emit("INFO", "Sending new parameters to car")
+        LOG("INFO", "Sending new parameters to car")
 
         # Save entered params in object
         self.params.steering_kp = int(self.steer_kp_textbox.text())
