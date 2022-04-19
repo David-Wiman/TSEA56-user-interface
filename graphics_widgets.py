@@ -41,7 +41,7 @@ class MapWidget(PlaceHolder):
 class DataWidget(QFrame):
     """ A box which lists the most recent driving data """
 
-    DATA_FILENAME = "data_output.txt"
+    DATA_PATH = "data/"
 
     class DataField(QLabel):
         """ Custom label to display car's drive data field """
@@ -122,12 +122,38 @@ class DataWidget(QFrame):
         self.all_data.append(data)  # Add data to history
 
     def save_data(self):
-        """ Save all drive data to file """
-        with open(self.DATA_FILENAME, "w") as file:
-            file.write("\n".join([data.to_json() for data in self.all_data]))
+        """ Save all drive signals as csv files """
 
-        backend_signals().log_msg.emit(
-            "INFO", "Saved all drive data to \"{}\"".format(self.DATA_FILENAME))
+        self.save_signal("throttle",
+                         [str(data.throttle) for data in self.all_data])
+
+        self.save_signal("steering",
+                         [str(data.steering) for data in self.all_data])
+
+        self.save_signal("speed",
+                         [str(data.speed) for data in self.all_data])
+
+        self.save_signal("driving_distance",
+                         [str(data.driving_distance) for data in self.all_data])
+
+        self.save_signal("obstacle_distance",
+                         [str(data.obstacle_distance) for data in self.all_data])
+
+        self.save_signal("lateral_position",
+                         [str(data.lateral_position) for data in self.all_data])
+
+        self.save_signal("angle",
+                         [str(data.angle) for data in self.all_data])
+
+        LOG("INFO", "Saved all drive data to folder \"{}\"".format(self.DATA_PATH))
+
+    def save_signal(self, name, data_list):
+        """ Saves list of strings as csv-file with name """
+        fname = self.DATA_PATH + name + ".csv"
+
+        with open(fname, "w") as file:
+            file.write(",".join(data_list))
+        print("Saved " + name + " data to: " + fname)
 
 
 class PlanWidget(QScrollArea):
