@@ -488,8 +488,7 @@ class ManualMode(QWidget):
         new_time = time()
         if new_time - self.timer > self.DriveButton.MAX_SEND_RATE:
             socket().send_message(drive_instruction.to_json())
-
-        self.timer = new_time  # Reset timer
+            self.timer = new_time  # Reset timer
 
 
 class SemiMode(QWidget):
