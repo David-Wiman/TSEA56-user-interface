@@ -278,9 +278,11 @@ class ParameterWidget(QWidget):
         self.steer_kp_textbox = QLineEdit()
         self.steer_kd_textbox = QLineEdit()
         self.speed_kp_textbox = QLineEdit()
+        self.speed_ki_textbox = QLineEdit()
         layout.addRow(QLabel("STEER_KP"), self.steer_kp_textbox)
         layout.addRow(QLabel("STEER_KD"), self.steer_kd_textbox)
         layout.addRow(QLabel("SPEED_KP"), self.speed_kp_textbox)
+        layout.addRow(QLabel("SPEED_KI"), self.speed_ki_textbox)
 
         btn_layout = QHBoxLayout()
 
@@ -302,6 +304,7 @@ class ParameterWidget(QWidget):
         self.params.steering_kp = int(self.steer_kp_textbox.text())
         self.params.steering_kd = int(self.steer_kd_textbox.text())
         self.params.speed_kp = int(self.speed_kp_textbox.text())
+        self.params.speed_ki = int(self.speed_ki_textbox.text())
 
         socket().send_message(self.params.to_json())
         self.close_popup()
@@ -318,6 +321,7 @@ class ParameterWidget(QWidget):
         self.steer_kp_textbox.setText(str(self.params.steering_kp))
         self.steer_kd_textbox.setText(str(self.params.steering_kd))
         self.speed_kp_textbox.setText(str(self.params.speed_kp))
+        self.speed_ki_textbox.setText(str(self.params.speed_ki))
 
         self.setMinimumSize(300, 60)
         self.setWindowTitle("Parameterkonfiguration")
