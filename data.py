@@ -8,7 +8,10 @@ class JSONSerializable:
     def to_json(self, type_name: str) -> str:
         """ Creates a JSON-object from instance, with the type as top level key """
         payload = json.dumps(self, default=lambda o: o.__dict__,
-                             sort_keys=True, indent=4)
+                             sort_keys=True, indent=1)
+
+        # \n reserved for end of message char in socket communication
+        payload = payload.replace("\n", "")
         return "{" + "\"{}\": {}".format(type_name, payload) + "}"
 
 
@@ -60,7 +63,7 @@ class ManualDriveInstruction(JSONSerializable):
 
 
 class Direction:
-    """ Available directions the car can drive in the autonomous modes"""
+    """ Available directions the car can drive in the autonomous modes """
     LEFT = 0
     FWRD = 1
     RIGHT = 2
