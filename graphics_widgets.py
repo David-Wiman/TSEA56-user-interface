@@ -96,7 +96,7 @@ class DataWidget(QFrame):
         self.labels.append(self.DataField("Gaspådrag", 0, ""))
         self.labels.append(self.DataField("Styrutslag", 0, ""))
         self.labels.append(self.DataField("Hastighet", 0, "cm/s"))
-        self.labels.append(self.DataField("Körsträcka", 0, "cm"))
+        self.labels.append(self.DataField("Körsträcka", 0, "m"))
         self.labels.append(self.DataField("Hinderavstånd", 0, "cm"))
         self.labels.append(self.DataField("Lateral", 0, "cm"))
         self.labels.append(self.DataField("Vinkelavvikelse", 0, "grader"))
@@ -114,8 +114,8 @@ class DataWidget(QFrame):
         self.labels[0].update_data(data.elapsed_time)
         self.labels[1].update_data(data.throttle)
         self.labels[2].update_data(data.steering)
-        self.labels[3].update_data(data.speed)
-        self.labels[4].update_data(data.driving_distance)
+        self.labels[3].update_data(data.speed / 10)  # mm/s -> cm/s
+        self.labels[4].update_data(data.driving_distance / 10) # dm -> m
         self.labels[5].update_data(data.obstacle_distance)
         self.labels[6].update_data(data.lateral_position)
         self.labels[7].update_data(data.angle)
