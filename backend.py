@@ -2,11 +2,9 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
+from config import PORT, SERVER_IP
 from data import (DriveData, ManualDriveInstruction, SemiDriveInstruction,
                   get_type_and_data)
-
-PORT = 1234
-URL = "192.168.1.31"
 
 
 class BackendSignals(QObject):
@@ -55,7 +53,7 @@ class Socket(QObject):
     def connect(self):
         """ Connect socket to host """
         self.log("Connecting to car....")
-        self.pSocket.connectToHost(URL, PORT)
+        self.pSocket.connectToHost(SERVER_IP, PORT)
 
     def disconnect(self):
         """ Disconnect socket from host """
@@ -96,8 +94,6 @@ class Socket(QObject):
         print(error)
         if error == QAbstractSocket.ConnectionRefusedError:
             self.log('Unable to send data to port: "{}"'.format(PORT), "ERROR")
-            self.log("trying to reconnect", "ERROR")
-            QTimer.singleShot(1000, self.slotSendMessage)
 
     def on_connected(self):
         self.log("Connected")

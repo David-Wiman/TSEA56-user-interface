@@ -3,11 +3,9 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QMainWindow, QMenu,
                                QVBoxLayout, QWidget, QWidgetAction)
 
 from backend import socket
+from config import GUI_HEIGHT, GUI_WIDTH
 from graphics_widgets import (ButtonsWidget, ControlsWidget, DataWidget,
                               LogWidget, MapWidget, PlanWidget)
-
-GUI_WIDTH = 1280
-GUI_HEIGHT = 720
 
 
 class MainWindow(QMainWindow):

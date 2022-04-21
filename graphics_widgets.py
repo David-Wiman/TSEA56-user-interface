@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
                                QWidget)
 
 from backend import backend_signals, socket
+from config import CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE
 from data import (Direction, DriveData, ManualDriveInstruction,
                   ParameterConfiguration, SemiDriveInstruction)
 
@@ -40,8 +41,6 @@ class MapWidget(PlaceHolder):
 
 class DataWidget(QFrame):
     """ A box which lists the most recent driving data """
-
-    DATA_PATH = "data/"
 
     class DataField(QLabel):
         """ Custom label to display car's drive data field """
@@ -115,7 +114,7 @@ class DataWidget(QFrame):
         self.labels[1].update_data(data.throttle)
         self.labels[2].update_data(data.steering)
         self.labels[3].update_data(data.speed / 10)  # mm/s -> cm/s
-        self.labels[4].update_data(data.driving_distance / 10) # dm -> m
+        self.labels[4].update_data(data.driving_distance / 10)  # dm -> m
         self.labels[5].update_data(data.obstacle_distance)
         self.labels[6].update_data(data.lateral_position)
         self.labels[7].update_data(data.angle)
@@ -145,11 +144,11 @@ class DataWidget(QFrame):
         self.save_signal("angle",
                          [str(data.angle) for data in self.all_data])
 
-        LOG("INFO", "Saved all drive data to folder \"{}\"".format(self.DATA_PATH))
+        LOG("INFO", "Saved all drive data to folder \"{}\"".format(DATA_PATH))
 
     def save_signal(self, name, data_list):
         """ Saves list of strings as csv-file with name """
-        fname = self.DATA_PATH + name + ".csv"
+        fname = DATA_PATH + name + ".csv"
 
         with open(fname, "w") as file:
             file.write(",".join(data_list))
@@ -384,14 +383,8 @@ class ControlsWidget(QWidget):
 class ManualMode(QWidget):
     """ The buttons needed for manual driving """
 
-    CAR_ACC = 100         # Max throttle
-    FULL_STEER = 280      # Max steer (right)
-    HALF_STEER = 100      # Half steer
-
     class DriveButton(QToolButton):
         """ A button for steering the car in manual mode"""
-
-        MAX_SEND_RATE = 1/10  # Frequency (Hz)
 
         def __init__(self, action, arrow):
             super().__init__()
@@ -403,7 +396,7 @@ class ManualMode(QWidget):
 
             self.clicked.connect(action)
             self.setAutoRepeat(True)
-            self.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
+            self.setAutoRepeatInterval(MAX_SEND_RATE * 250)
             self.setArrowType(arrow)
             self.setSizePolicy(size_policy)
             self.setStyleSheet("border: 1px solid grey")
@@ -462,31 +455,31 @@ class ManualMode(QWidget):
         shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
 
     def send_fwrd(self):
-        self.send_drive_instruction(ManualDriveInstruction(self.CAR_ACC, 0))
+        self.send_drive_instruction(ManualDriveInstruction(CAR_ACC, 0))
 
     def send_bwrd(self):
         self.send_drive_instruction(ManualDriveInstruction(0, 0))
 
     def send_right(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, self.FULL_STEER))
+            ManualDriveInstruction(CAR_ACC, FULL_STEER))
 
     def send_left(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, -self.FULL_STEER))
+            ManualDriveInstruction(CAR_ACC, -FULL_STEER))
 
     def send_fwrd_right(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, self.HALF_STEER))
+            ManualDriveInstruction(CAR_ACC, HALF_STEER))
 
     def send_fwrd_left(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, -self.HALF_STEER))
+            ManualDriveInstruction(CAR_ACC, -HALF_STEER))
 
     def send_drive_instruction(self, drive_instruction: ManualDriveInstruction):
-        # Sends drive intruction at approximately MAX_SEND_RATE (Hz)
+        """ Sends drive intruction at approximately MAX_SEND_RATE (Hz) """
         new_time = time()
-        if new_time - self.timer > self.DriveButton.MAX_SEND_RATE:
+        if new_time - self.timer > MAX_SEND_RATE:
             socket().send_message(drive_instruction.to_json())
             self.timer = new_time  # Reset timer
 
