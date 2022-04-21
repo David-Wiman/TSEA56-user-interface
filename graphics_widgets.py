@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
                                QWidget)
 
 from backend import backend_signals, socket
-from config import CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE
+from config import (CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE,
+                    SPEED_KI, SPEED_KP, STEER_KD, STEER_KP)
 from data import (Direction, DriveData, ManualDriveInstruction,
                   ParameterConfiguration, SemiDriveInstruction)
 
@@ -339,7 +340,9 @@ class ControlsWidget(QWidget):
         layout = QHBoxLayout(self)
         layout_l = QVBoxLayout()
 
-        self.param_data = ParameterConfiguration()  # Current param config
+        # Initate parameters with default values
+        self.param_data = ParameterConfiguration(STEER_KP, STEER_KD,
+                                                 SPEED_KP, SPEED_KI)
         param = ParameterWidget()
 
         # Parameter button

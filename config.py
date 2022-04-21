@@ -27,3 +27,16 @@ HALF_STEER = 100
 
 MAX_SEND_RATE = 1/10
 """ Max rate at which manual instructions will be sent """
+
+# Default regulation control paramters
+STEER_KP = 1
+""" Default value for steering kp """
+
+STEER_KD = 0
+""" Default value for steering kd """
+
+SPEED_KP = 1
+""" Default value for speed kp """
+
+SPEED_KI = 0
+""" Default value for steering ki """
