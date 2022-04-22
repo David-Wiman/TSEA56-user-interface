@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
 from backend import backend_signals, socket
 from config import (CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE,
                     SPEED_KI, SPEED_KP, STEER_KD, STEER_KP)
-from data import (Direction, DriveData, ManualDriveInstruction,
+from data import (Direction, DriveData, ManualDriveInstruction, MapData,
                   ParameterConfiguration, SemiDriveInstruction)
 
 

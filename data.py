@@ -1,6 +1,8 @@
 import json
 from uuid import uuid4
 
+from config import DEFAULT_MAP_PATH
+
 
 class JSONSerializable:
     """ Enables a simple dataclass to be serialized with JSON """
@@ -108,12 +110,12 @@ class MapData:
         self.map = map
 
     def add_node(self, node: str):
-        """ Adds a node to the map """
+        """ Adds a unconnected node to the map """
         if node in self.map:
             print("Map already contains \"{}\"".format(node))
             return
 
-        self.map[node] = []
+        self.map[node] = {}
 
     def connect_node(self, node_1: str, node_2: str, weight: int):
         """ Connects node_1 to node_2 with weight. Adds nodes if not already in map. """
@@ -123,11 +125,50 @@ class MapData:
         if node_2 not in self.map:
             self.add_node(node_2)
 
-        self.map[node_1].append({node_2: weight})
+        self.map[node_1][node_2] = weight
+
+    def verify_complete_map(self):
+        """ Returns 'True' if if map is complete """
+        is_complete = True  # Assume complete
+
+        # Check each node in map is valid
+        for key in self.map.keys():
+            # Check if any orphaned nodes
+            if len(self.map[key]) == 0:
+                print("ERROR: Orphaned node: \"{}\"".format(key))
+                is_complete = False
+
+            # Check if too many connecting nodes
+            if len(self.map[key]) > 2:
+                print("ERROR: Too many connecting nodes for \"{}\": {}".format(
+                    key, self.map[key]))
+                is_complete = False
+
+        return is_complete
+
+    def load_from_file(self, path: str = DEFAULT_MAP_PATH):
+        """ Load a JSON-object map from file at path """
+        json_str = ""
+        with open(path, "r") as file:
+            json_str = " ".join(file.readlines())
+        return self.from_json(json_str)
+
+    def save_to_file(self, path: str = DEFAULT_MAP_PATH):
+        """ Save map as JSON-object to path """
+        with open(path, "w") as file:
+            file.write(self.to_json())
+
+    def from_json(self, j_str: str):
+        """ Load map from a JSON string """
+        return MapData(json.loads(j_str)["MapData"])
 
     def to_json(self) -> str:
-        """ Creates a JSON-object of a map, with the type as top level key """
-        return "{" + "\"{}\": {}".format("MapData", json.dumps(self.map)) + "}"
+        """ Creates a JSON-object of a map, with MapData as top level key """
+        payload = json.dumps(self.map)
+
+        # \n reserved for end of message char in socket communication
+        payload = payload.replace("\n", "")
+        return "{" + "\"{}\": {}".format("MapData", payload) + "}"
 
 
 def get_type_and_data(json_str):

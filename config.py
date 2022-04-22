@@ -8,6 +8,9 @@ GUI_HEIGHT = 720
 DATA_PATH = "data/"
 """ Path to folder where the csv-files will be saved """
 
+DEFAULT_MAP_PATH = "map/map.json"
+""" The default path to load map from """
+
 # Backend configuration
 PORT = 1234
 """ Port the socket will try to connect to """
