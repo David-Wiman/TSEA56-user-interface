@@ -120,7 +120,7 @@ class MapData:
             print("Map already contains \"{}\"".format(node))
             return
 
-        self.map[node] = []
+        self.map[node] = {}
 
     def connect_node(self, node_1: str, node_2: str, weight: int, is_left=True):
         """ Connects node_1 to node_2 with weight. Adds nodes if not already in map. """
