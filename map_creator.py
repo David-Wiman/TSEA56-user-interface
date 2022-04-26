@@ -43,6 +43,18 @@ class Node(QGraphicsItem):
 
         scene.removeItem(self)
 
+    def set_name(self, new_name):
+        """ Updates node's name """
+        print("New name: " + str(new_name))
+        self.name = str(new_name)
+
+        for edge in self.edge_list:
+            edge.update_name()  # Update all edge names
+
+        # TODO: Check if name already is in use
+
+        self.update()
+
     def disconnect_edge(self, edge_rm):
         """ Disconnect edge from this node """
         self.edge_list = [edge for edge in self.edge_list if edge != edge_rm]
@@ -109,7 +121,7 @@ class Edge(QGraphicsItem):
         self.start = start_node
         self.end = end_node
 
-        self.name = start_node.name + end_node.name  # Combine both node names
+        self.update_name()
         self.weight = weight
 
         self.start.addEdge(self)
@@ -140,11 +152,14 @@ class Edge(QGraphicsItem):
         self.line.setP1(self.start.pos())
         self.line.setP2(self.end.pos())
 
-    def set_weight(self, new_weight: int):
+    def update_name(self):
+        """ Sets edge's name as combination of connecting nodes """
+        self.name = self.start.name + self.end.name
+
+    def set_weight(self, new_weight):
         """ Updates edge's weight, or deletes it if it was 0 """
         print("New weight: " + str(new_weight))
-        self.weight = abs(new_weight)  # No negative weights
-        self.popup.close()
+        self.weight = abs(int(new_weight))  # No negative or non-int weights
 
         if self.weight == 0:
             # Edge weight 0 means delete edge
@@ -154,8 +169,9 @@ class Edge(QGraphicsItem):
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent):
         """ Opens popup on double click where user can change weight """
 
-        self.popup = SetWeightWidget(self.weight, self.set_weight)
-        self.popup.show()
+        popup = SetPropertyWidget(
+            "weight", str(self.weight), self.set_weight)
+        popup.show()
 
         return super().mouseDoubleClickEvent(event)
 
@@ -187,20 +203,24 @@ class Edge(QGraphicsItem):
         painter.drawText(text_pos, "{}: {}".format(self.name, self.weight))
 
 
-class SetWeightWidget(QWidget):
-    """ Small popup where user can enter a new edge weight """
+class SetPropertyWidget(QWidget):
+    """ Small popup where user can set a property """
 
-    def __init__(self, weight: int, change_weight):
+    def __init__(self, label: str, value, change_value):
         super().__init__()
 
         layout = QHBoxLayout(self)
-        weight_box = QLineEdit(str(weight))
-        layout.addWidget(QLabel("weight"))
-        layout.addWidget(weight_box)
+        self.value_edit_box = QLineEdit(str(value))
+        layout.addWidget(QLabel(label))
+        layout.addWidget(self.value_edit_box)
 
-        # Update weight when user presses enter
-        weight_box.returnPressed.connect(
-            lambda: change_weight(int(weight_box.text())))
+        # Update value when user presses enter
+        self.value_edit_box.returnPressed.connect(
+            lambda: self.change_value_and_close(change_value))
+
+    def change_value_and_close(self, change_value):
+        change_value(self.value_edit_box.text())
+        self.close()
 
 
 class MapCreatorWidget(QGraphicsView):
@@ -266,7 +286,7 @@ class MapCreatorWidget(QGraphicsView):
             self.delete_selected_node()
         return super().keyReleaseEvent(event)
 
-    def add_node(self, name: str):
+    def add_node(self, name: str = ""):
         """ Add a new node to scene """
         node = Node(self, name)
         self.nodes.append(node)
@@ -288,6 +308,13 @@ class MapCreatorWidget(QGraphicsView):
         if self.selected_node is not None:
             self.selected_node.remove_from_scene(self.scene())
             self.selected_node = None
+
+    def change_selected_node_name(self):
+        """ Changes name of selected node """
+        if self.selected_node is not None:
+            popup = SetPropertyWidget("Name", "",
+                                      self.selected_node.set_name)
+            popup.show()
 
     def drawBackground(self, painter: QPainter, _):
         painter.fillRect(self.sceneRect(), Qt.gray)
@@ -320,15 +347,20 @@ class MapCreatorWindow(QStackedWidget):
     def create_buttons(self, creator_widget: MapCreatorWidget):
         """ Create add and delete node buttons """
         buttons = QWidget(self)
-        buttons.setFixedSize(120, 60)
+        buttons.setFixedSize(120, 100)
         btn_layout = QVBoxLayout()
         add_node_btn = QPushButton("Add node")
-        add_node_btn.clicked.connect(lambda: creator_widget.add_node("_"))
+        add_node_btn.clicked.connect(lambda: creator_widget.add_node())
         btn_layout.addWidget(add_node_btn)
 
         del_node_btn = QPushButton("Delete node")
         del_node_btn.clicked.connect(creator_widget.delete_selected_node)
         btn_layout.addWidget(del_node_btn)
+        buttons.setLayout(btn_layout)
+
+        name_node_btn = QPushButton("Change name")
+        name_node_btn.clicked.connect(creator_widget.change_selected_node_name)
+        btn_layout.addWidget(name_node_btn)
         buttons.setLayout(btn_layout)
 
 
