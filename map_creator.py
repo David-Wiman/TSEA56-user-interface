@@ -26,6 +26,7 @@ class Node(QGraphicsItem):
         self.setCacheMode(self.DeviceCoordinateCache)
 
         self.name = name
+        self.fill_color = self.FILL_COLOR
 
         self.edge_list: list[Edge] = []
 
@@ -53,16 +54,26 @@ class Node(QGraphicsItem):
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent):
         """ If user double clicks on two nodes, connect them """
-        last = self.graph.last_selected_node
-        if last is None:
+        last = self.graph.selected_node
+
+        if last == self:
+            # This node already selected -> deselect
+            print("Node {} deselected".format(self.name))
+            self.graph.selected_node = None
+            self.fill_color = self.FILL_COLOR
+        elif last is None:
+            # No node selected -> select
             print("Node {} selected".format(self.name))
-            self.graph.last_selected_node = self
+            self.graph.selected_node = self
+            self.fill_color = self.FILL_COLOR.lighter(110)
         else:
+            # Another node selected -> connect to it with edge
             # TODO: Check that a edge doesn't already exist
             print("Connected {}->{}".format(last.name, self.name))
             self.graph.add_edge(last, self)
-            self.graph.last_selected_node = None
+            self.graph.selected_node = None
 
+        self.update()
         self.graph.scene().update()
         return super().mouseDoubleClickEvent(event)
 
@@ -80,7 +91,7 @@ class Node(QGraphicsItem):
 
     def paint(self, painter: QPainter, _option, _widget):
         # Draws filled circle with a border
-        painter.setBrush(self.FILL_COLOR)
+        painter.setBrush(self.fill_color)
         painter.setPen(self.BORDER)
         painter.drawEllipse(-self.RADIUS/2, -self.RADIUS/2,
                             self.RADIUS, self.RADIUS)
@@ -198,7 +209,7 @@ class MapCreatorWidget(QGraphicsView):
     SCENESIZE = 800
 
     # Remeber which node was clicked on last
-    last_selected_node: Node = None
+    selected_node: Node = None
 
     def __init__(self):
         super().__init__()
