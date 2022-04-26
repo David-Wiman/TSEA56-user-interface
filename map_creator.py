@@ -1,8 +1,9 @@
-from PySide6.QtCore import QLineF, QRectF, QSizeF, Qt
-from PySide6.QtGui import QPainter, QPen
+from PySide6.QtCore import QLineF, QPointF, QRectF, QSizeF, Qt
+from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
                                QGraphicsSceneMouseEvent, QGraphicsView,
-                               QMainWindow, QSizePolicy)
+                               QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+                               QSizePolicy, QWidget)
 
 from data import MapData
 
@@ -12,7 +13,7 @@ class Node(QGraphicsItem):
 
     RADIUS = 60
     BORDER = QPen(Qt.black, 2)  # Color and thickness
-    FILL_COLOR = Qt.white
+    FILL_COLOR = QColor("blue").lighter(150)
 
     def __init__(self, parent, name: str):
         super().__init__()
@@ -71,9 +72,6 @@ class Node(QGraphicsItem):
             for edge in self.edge_list:
                 edge.adjust()  # Adjust edges to new node position
 
-            if self.pos().x() < -250:
-                self.graph.delete_node(self)
-
         return super().itemChange(change, value)
 
     def boundingRect(self):
@@ -130,10 +128,22 @@ class Edge(QGraphicsItem):
         self.line.setP1(self.start.pos())
         self.line.setP2(self.end.pos())
 
+    def set_weight(self, new_weight: int):
+        """ Updates edge's weight, or deletes it if it was 0 """
+        print("New weight: " + str(new_weight))
+        self.weight = abs(new_weight)  # No negative weights
+        self.popup.close()
+
+        if self.weight == 0:
+            # Edge weight 0 means delete edge
+            print("Deleting edge " + self.name)
+            self.delete()
+
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent):
-        """ If user double clicks an edge, delete it """
-        print("Deleting edge " + self.name)
-        self.delete()
+        """ Opens popup on double click where user can change weight """
+
+        self.popup = SetWeightWidget(self.weight, self.set_weight)
+        self.popup.show()
 
         return super().mouseDoubleClickEvent(event)
 
@@ -147,15 +157,38 @@ class Edge(QGraphicsItem):
     def paint(self, painter: QPainter, _option, _widget):
         painter.setPen(QPen(Qt.black, 5, Qt.SolidLine,
                        Qt.RoundCap, Qt.RoundJoin))
+
+        # Draw edge
         painter.drawLine(self.line)
 
-        # Calculate where to put name label
-        center_ptn = self.line.center()
-        offset_x = self.line.normalVector().dx() / self.line.length() * 15
-        offset_y = self.line.normalVector().dy() / self.line.length() * 15
+        # Calculate where to put edge label
+        offset_x = self.line.normalVector().dx() / self.line.length() * 15 - 15
+        offset_y = self.line.normalVector().dy() / self.line.length() * 15 + 5
+        text_pos = QPointF(self.line.center().x() + offset_x,
+                           self.line.center().y() + offset_y)
 
-        painter.drawText(center_ptn.x() + offset_x, center_ptn.y() + offset_y,
-                         "{}: {}".format(self.name, self.weight))
+        # Draw edge label
+        font = painter.font()
+        font.setPixelSize(20)
+        painter.setFont(font)
+        painter.setPen(Qt.white)
+        painter.drawText(text_pos, "{}: {}".format(self.name, self.weight))
+
+
+class SetWeightWidget(QWidget):
+    """ Small popup where user can enter a new edge weight """
+
+    def __init__(self, weight: int, change_weight):
+        super().__init__()
+
+        layout = QHBoxLayout(self)
+        weight_box = QLineEdit(str(weight))
+        layout.addWidget(QLabel("weight"))
+        layout.addWidget(weight_box)
+
+        # Update weight when user presses enter
+        weight_box.returnPressed.connect(
+            lambda: change_weight(int(weight_box.text())))
 
 
 class MapCreatorWidget(QGraphicsView):
@@ -197,12 +230,12 @@ class MapCreatorWidget(QGraphicsView):
         for node in self.nodes:
             scene.addItem(node)
 
-        scene.addItem(Edge(self.nodes[0], self.nodes[1], 0))
+        scene.addItem(Edge(self.nodes[0], self.nodes[1]))
         scene.addItem(Edge(self.nodes[1], self.nodes[8]))
         scene.addItem(Edge(self.nodes[2], self.nodes[4]))
         scene.addItem(Edge(self.nodes[3], self.nodes[8]))
         scene.addItem(Edge(self.nodes[8], self.nodes[4]))
-        scene.addItem(Edge(self.nodes[8], self.nodes[6], 0))
+        scene.addItem(Edge(self.nodes[8], self.nodes[6]))
         scene.addItem(Edge(self.nodes[4], self.nodes[7]))
         scene.addItem(Edge(self.nodes[6], self.nodes[5]))
         scene.addItem(Edge(self.nodes[7], self.nodes[6]))
