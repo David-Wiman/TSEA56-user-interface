@@ -1,10 +1,10 @@
 from PySide6.QtCore import QLineF, QPointF, QRectF, QSizeF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
                                QGraphicsSceneMouseEvent, QGraphicsView,
                                QHBoxLayout, QLabel, QLineEdit, QMainWindow,
                                QPushButton, QSizePolicy, QStackedWidget,
-                               QWidget)
+                               QVBoxLayout, QWidget)
 
 from data import MapData
 
@@ -260,6 +260,12 @@ class MapCreatorWidget(QGraphicsView):
         self.nodes[6].setPos(0, space_const)
         self.nodes[7].setPos(space_const, space_const)
 
+    def keyReleaseEvent(self, event: QKeyEvent):
+        """ Delete selected node when user presses delete """
+        if event.key() == Qt.Key_Delete:
+            self.delete_selected_node()
+        return super().keyReleaseEvent(event)
+
     def add_node(self, name: str):
         """ Add a new node to scene """
         node = Node(self, name)
@@ -276,6 +282,12 @@ class MapCreatorWidget(QGraphicsView):
         """ Deletes node from widget """
         node.remove_from_scene(self.scene())
         self.nodes = [n for n in self.nodes if n != node]
+
+    def delete_selected_node(self):
+        """ Deletes selected node from widget """
+        if self.selected_node is not None:
+            self.selected_node.remove_from_scene(self.scene())
+            self.selected_node = None
 
     def drawBackground(self, painter: QPainter, _):
         painter.fillRect(self.sceneRect(), Qt.gray)
@@ -303,8 +315,21 @@ class MapCreatorWindow(QStackedWidget):
 
         creator_widget = MapCreatorWidget()
         self.addWidget(creator_widget)
-        add_node_btn = QPushButton("Add node", self)
+        self.create_buttons(creator_widget)
+
+    def create_buttons(self, creator_widget: MapCreatorWidget):
+        """ Create add and delete node buttons """
+        buttons = QWidget(self)
+        buttons.setFixedSize(120, 60)
+        btn_layout = QVBoxLayout()
+        add_node_btn = QPushButton("Add node")
         add_node_btn.clicked.connect(lambda: creator_widget.add_node("_"))
+        btn_layout.addWidget(add_node_btn)
+
+        del_node_btn = QPushButton("Delete node")
+        del_node_btn.clicked.connect(creator_widget.delete_selected_node)
+        btn_layout.addWidget(del_node_btn)
+        buttons.setLayout(btn_layout)
 
 
 if __name__ == "__main__":
