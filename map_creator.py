@@ -3,7 +3,8 @@ from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
                                QGraphicsSceneMouseEvent, QGraphicsView,
                                QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-                               QSizePolicy, QWidget)
+                               QPushButton, QSizePolicy, QStackedWidget,
+                               QWidget)
 
 from data import MapData
 
@@ -192,27 +193,24 @@ class SetWeightWidget(QWidget):
 
 
 class MapCreatorWidget(QGraphicsView):
-    """ A widget for creating maps, represented as an undrirected weighted graph """
+    """ A widget for creating maps, represented as an undirected weighted graph """
 
-    WINDOW_SIZE = 800
+    SCENESIZE = 800
 
     # Remeber which node was clicked on last
     last_selected_node: Node = None
 
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(self.WINDOW_SIZE, self.WINDOW_SIZE)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setWindowTitle("Kartritning")
 
         scene = QGraphicsScene()
 
         scene.setItemIndexMethod(QGraphicsScene.NoIndex)
-        scene.setSceneRect(-self.WINDOW_SIZE/2, -self.WINDOW_SIZE/2,
-                           self.WINDOW_SIZE, self.WINDOW_SIZE)
+        scene.setSceneRect(-self.SCENESIZE/2, -self.SCENESIZE/2,
+                           self.SCENESIZE, self.SCENESIZE)
         self.setScene(scene)
 
-        # self.setCacheMode(QGraphicsView.CacheBackground)
+        self.setCacheMode(QGraphicsView.CacheBackground)
         self.setViewportUpdateMode(QGraphicsView.BoundingRectViewportUpdate)
         self.setRenderHint(QPainter.Antialiasing)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
@@ -251,6 +249,13 @@ class MapCreatorWidget(QGraphicsView):
         self.nodes[6].setPos(0, space_const)
         self.nodes[7].setPos(space_const, space_const)
 
+    def add_node(self, name: str):
+        """ Add a new node to scene """
+        node = Node(self, name)
+        self.nodes.append(node)
+        self.scene().addItem(node)
+        node.setPos(15, 15)
+
     def add_edge(self, node1, node2):
         """ Connect two nodes with an edge """
         edge = Edge(node1, node2)
@@ -273,11 +278,29 @@ class MapCreatorWidget(QGraphicsView):
         pass
 
 
+class MapCreatorWindow(QStackedWidget):
+
+    WINDOW_SIZE = 800
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Kartritning")
+        self.setMinimumSize(self.WINDOW_SIZE,
+                            self.WINDOW_SIZE)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        creator_widget = MapCreatorWidget()
+        self.addWidget(creator_widget)
+        add_node_btn = QPushButton("Add node", self)
+        add_node_btn.clicked.connect(lambda: creator_widget.add_node("_"))
+
+
 if __name__ == "__main__":
     # Only here for debug purposes
     app = QApplication([])
 
-    map = MapCreatorWidget()
+    map = MapCreatorWindow()
 
     window = QMainWindow()
     window.setCentralWidget(map)
