@@ -87,6 +87,8 @@ class Socket(QObject):
 
         if type == "DriveData":
             backend_signals().new_drive_data.emit(DriveData.from_json(data))
+        elif type == "InstructionId":
+            backend_signals().remove_semi_instruction.emit(str(data))
         else:
             print("Unknown type: " + type, "\n"+str(data))
 
