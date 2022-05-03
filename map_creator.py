@@ -1,5 +1,5 @@
 from PySide6.QtCore import QLineF, QPointF, QRectF, QSizeF, Qt
-from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPen
+from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPen, QVector2D
 from PySide6.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
                                QGraphicsSceneMouseEvent, QGraphicsView,
                                QHBoxLayout, QLabel, QLineEdit, QMainWindow,
@@ -158,12 +158,12 @@ class Edge(QGraphicsItem):
 
     def set_weight(self, new_weight):
         """ Updates edge's weight, or deletes it if it was 0 """
-        print("New weight: " + str(new_weight))
+        # print("New weight: " + str(new_weight))
         self.weight = abs(int(new_weight))  # No negative or non-int weights
 
         if self.weight == 0:
             # Edge weight 0 means delete edge
-            print("Deleting edge " + self.name)
+            # print("Deleting edge " + self.name)
             self.delete()
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent):
@@ -254,31 +254,44 @@ class MapCreatorWidget(QGraphicsView):
         scene = self.scene()
         self.nodes = [Node(self, "A"), Node(self, "B"), Node(self, "C"),
                       Node(self, "D"), Node(self, "E"), Node(self, "F"),
-                      Node(self, "G"), Node(self, "H"), Node(self, "I")]
+                      Node(self, "G"), Node(self, "H"), Node(self, "I"),
+                      Node(self, "J"), Node(self, "K"), Node(self, "L"),
+                      Node(self, "M")]
 
         for node in self.nodes:
             scene.addItem(node)
 
         scene.addItem(Edge(self.nodes[0], self.nodes[1]))
-        scene.addItem(Edge(self.nodes[1], self.nodes[8]))
-        scene.addItem(Edge(self.nodes[2], self.nodes[4]))
-        scene.addItem(Edge(self.nodes[3], self.nodes[8]))
-        scene.addItem(Edge(self.nodes[8], self.nodes[4]))
-        scene.addItem(Edge(self.nodes[8], self.nodes[6]))
-        scene.addItem(Edge(self.nodes[4], self.nodes[7]))
-        scene.addItem(Edge(self.nodes[6], self.nodes[5]))
-        scene.addItem(Edge(self.nodes[7], self.nodes[6]))
+        scene.addItem(Edge(self.nodes[0], self.nodes[10]))
+        scene.addItem(Edge(self.nodes[1], self.nodes[2]))
+        scene.addItem(Edge(self.nodes[1], self.nodes[11]))
+        scene.addItem(Edge(self.nodes[2], self.nodes[3]))
+        scene.addItem(Edge(self.nodes[2], self.nodes[11]))
+        scene.addItem(Edge(self.nodes[3], self.nodes[4]))
+        scene.addItem(Edge(self.nodes[4], self.nodes[5]))
+        scene.addItem(Edge(self.nodes[5], self.nodes[6]))
+        scene.addItem(Edge(self.nodes[6], self.nodes[7]))
+        scene.addItem(Edge(self.nodes[7], self.nodes[8]))
+        scene.addItem(Edge(self.nodes[7], self.nodes[12]))
+        scene.addItem(Edge(self.nodes[8], self.nodes[9]))
+        scene.addItem(Edge(self.nodes[8], self.nodes[12]))
+        scene.addItem(Edge(self.nodes[9], self.nodes[10]))
+        scene.addItem(Edge(self.nodes[11], self.nodes[12]))
 
-        space_const = Node.RADIUS * 2
-        self.nodes[8].setPos(0, 0)
-        self.nodes[0].setPos(-space_const, -space_const)
-        self.nodes[1].setPos(0, -space_const)
-        self.nodes[2].setPos(space_const, -space_const)
-        self.nodes[3].setPos(-space_const, 0)
-        self.nodes[4].setPos(space_const, 0)
-        self.nodes[5].setPos(-space_const, space_const)
-        self.nodes[6].setPos(0, space_const)
-        self.nodes[7].setPos(space_const, space_const)
+        space_const = Node.RADIUS * 1.5
+        self.nodes[0].setPos(-2*space_const, 2*space_const)
+        self.nodes[1].setPos(-space_const, 2*space_const)
+        self.nodes[2].setPos(space_const, 2*space_const)
+        self.nodes[3].setPos(2*space_const, 2*space_const)
+        self.nodes[4].setPos(3*space_const, 2*space_const)
+        self.nodes[5].setPos(4*space_const, 0)
+        self.nodes[6].setPos(3*space_const, -2*space_const)
+        self.nodes[7].setPos(space_const, -2*space_const)
+        self.nodes[8].setPos(-space_const, -2*space_const)
+        self.nodes[9].setPos(-2*space_const, -2*space_const)
+        self.nodes[10].setPos(-3*space_const, -2*space_const)
+        self.nodes[11].setPos(0, space_const)
+        self.nodes[12].setPos(0, -space_const)
 
     def keyReleaseEvent(self, event: QKeyEvent):
         """ Delete selected node when user presses delete """
@@ -323,9 +336,9 @@ class MapCreatorWidget(QGraphicsView):
         """ Populates graph from a MapData instance """
         pass
 
-    def get_map() -> MapData:
+    def get_map(self) -> MapData:
         """ Returns a MapData instance from current graph """
-        pass
+        return create_map_from_graph(self.nodes)
 
 
 class MapCreatorWindow(QStackedWidget):
@@ -347,8 +360,9 @@ class MapCreatorWindow(QStackedWidget):
     def create_buttons(self, creator_widget: MapCreatorWidget):
         """ Create add and delete node buttons """
         buttons = QWidget(self)
-        buttons.setFixedSize(120, 100)
+        buttons.setFixedSize(120, 120)
         btn_layout = QVBoxLayout()
+
         add_node_btn = QPushButton("Add node")
         add_node_btn.clicked.connect(lambda: creator_widget.add_node())
         btn_layout.addWidget(add_node_btn)
@@ -356,12 +370,154 @@ class MapCreatorWindow(QStackedWidget):
         del_node_btn = QPushButton("Delete node")
         del_node_btn.clicked.connect(creator_widget.delete_selected_node)
         btn_layout.addWidget(del_node_btn)
-        buttons.setLayout(btn_layout)
 
         name_node_btn = QPushButton("Change name")
         name_node_btn.clicked.connect(creator_widget.change_selected_node_name)
         btn_layout.addWidget(name_node_btn)
+
+        save_graph_btn = QPushButton("Save map")
+        save_graph_btn.clicked.connect(
+            lambda: print(creator_widget.get_map().to_json()))
+        btn_layout.addWidget(save_graph_btn)
+
         buttons.setLayout(btn_layout)
+
+
+# TODO Handle left/right
+# TODO Handle intersections
+
+
+def get_sorted_next_nodes(prev: Node, curr: Node):
+    """ Returns the next nodes sorted right to left, relative to prev->curr direction """
+    next_nodes = [edge.get_other_node(curr) for edge in curr.edge_list]
+    next_nodes.remove(prev)  # Dont return previous node
+
+    # Sorts next nodes based on cross product with the vector prev -> curr.
+    # Will be <0 if node is to the right, >0 if on the left and =0 if neither.
+    next_nodes.sort(key=lambda next: (curr.x()-prev.x()) * (prev.y()-next.y()) -
+                                     (prev.y()-curr.y()) * (next.x()-prev.x()))
+
+    return next_nodes
+    for next in next_nodes:
+        print("Dir:", curr.x() - prev.x(), prev.y() - curr.y())
+        print("Next:", next.x() - prev.x(), prev.y() - next.y())
+        print("Det " + next.name + ":", (curr.x()-prev.x()) *
+              (prev.y()-next.y()) - (prev.y()-curr.y()) * (next.x()-prev.x()))
+
+    print("Sorted: ", [node.name for node in next_nodes])
+
+
+def connect_node_pair(map: MapData, previous: Node, current: Node,
+                      visited: list[str], intersections: list[list[Node]],
+                      reversed=False):
+
+    print("Visiting " + current.name)
+    next_nodes = get_sorted_next_nodes(previous, current)
+
+    if (len(current.edge_list) == 3 and
+            not any(current in intersection for intersection in intersections)):
+        # Node is in intersection, and not already added to list
+        print("Intersection node", current.name)
+        intersections.append(next_nodes + [current])
+
+    current1 = current.name + "1"
+    current2 = current.name + "2"
+
+    if current1 in visited or current2 in visited:
+        # Node probably already connected
+        print("Return from " + current.name)
+        return
+
+    visited.extend([current1, current2])
+
+    for next in next_nodes:
+        next1 = next.name + "1"
+        next2 = next.name + "2"
+
+        if next1 in visited or next2 in visited:
+            # Node probably already connected
+            print("Skipping " + next.name)
+            continue
+
+        if reversed:
+            map.connect_node(current1, next1, 0)
+            map.connect_node(next2, current2, 0)
+        else:
+            map.connect_node(next1, current1, 0)
+            map.connect_node(current2, next2, 0)
+
+        # Connect next node pair
+        connect_node_pair(map, current, next, visited, intersections, reversed)
+
+        # Loop direction swaps
+        print("Direction swap")
+        reversed = not reversed
+
+    print("Return from", current.name)
+
+    # Print unconnected nodes
+    print([node for node in visited if len(map.map[node]) < 1])
+    for node in visited:
+        if len(map.map[node]) == 0:
+            # Unconnected
+
+            # Node name for node on opposite side
+            other_side = node[0:-1] + ("1" if node[-1:] == "2" else "2")
+            print("Other " + other_side)
+            if len(map.map[other_side]) != 0:
+                # map.connect_node()
+                print("Node " + node)
+                print("Current " + current.name)
+                pass
+
+
+def create_map_from_graph(nodes: list[Node]) -> MapData:
+    map = MapData()
+    visited = []
+    intersections = []  # Remember nodes in intersections for more processing
+
+    prev_node = nodes[0]
+    start_node = nodes[1]
+    map.connect_node(prev_node.name+"2", start_node.name+"2", 0)
+    map.connect_node(start_node.name+"1", prev_node.name+"1", 0)
+
+    connect_node_pair(map, prev_node, start_node, visited, intersections)
+    print("Intersections: ", len(intersections))
+    for intersection in intersections:
+        print([node.name for node in intersection])
+        connect_intersection(map, intersection)
+    return map
+
+
+def connect_intersection(map: MapData, intersec_nodes: list[Node]):
+    entry_nodes = set()
+    exit_nodes = set()
+    node_names = [n.name + "1" for n in intersec_nodes] + \
+        [n.name + "2" for n in intersec_nodes]
+
+    for node in node_names:
+        for neighbour in map.map[node]:
+            # Check if node is an exit node
+            if neighbour not in node_names:
+                # Node is an exit node
+                exit_nodes.add(node)
+
+        print(node, map.map[node])
+
+    print("Exit nodes", exit_nodes)
+    # Assume exit nodes are labeled correctly, remove duplicates from entry
+    for node in entry_nodes.intersection(exit_nodes):
+        entry_nodes.remove(node)
+
+    entry_nodes = set(node_names) - exit_nodes
+
+    print("Entry nodes", entry_nodes)
+
+    for entry in entry_nodes:
+        for exit in exit_nodes:
+            if exit[0:-1] != entry[0:-1]:
+                # Connect all entries to exits, except on the same side (eg L1 and L2)
+                map.connect_node(entry, exit, 0)
 
 
 if __name__ == "__main__":

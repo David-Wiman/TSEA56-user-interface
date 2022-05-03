@@ -125,6 +125,8 @@ class MapData:
         if node_2 not in self.map:
             self.add_node(node_2)
 
+        print("Connecting " + node_1 + " -> " + node_2)
+
         self.map[node_1][node_2] = weight
 
     def verify_complete_map(self):
