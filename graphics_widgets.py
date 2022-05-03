@@ -121,7 +121,7 @@ class DataWidget(QFrame):
         backend_signals().new_drive_data.connect(self.update_data)
 
     def update_data(self, data: DriveData):
-        self.labels[0].update_data(data.elapsed_time)
+        self.labels[0].update_data(int(data.elapsed_time / 1000))  # ms-> s
         self.labels[1].update_data(data.throttle)
         self.labels[2].update_data(data.steering)
         self.labels[3].update_data(data.speed / 10)  # mm/s -> cm/s
