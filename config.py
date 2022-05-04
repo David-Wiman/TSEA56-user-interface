@@ -15,7 +15,7 @@ DEFAULT_MAP_PATH = "map/map.json"
 PORT = 1234
 """ Port the socket will try to connect to """
 
-SERVER_IP = "192.168.1.31"
+SERVER_IP = "192.168.1.32"
 """ IP-address to the server """
 
 # Manual mode constants
@@ -42,4 +42,10 @@ SPEED_KP = 1
 """ Default value for speed kp """
 
 SPEED_KI = 0
-""" Default value for steering ki """
+""" Default value for speed ki """
+
+TURN_KP = 1
+""" Default value for turn kp """
+
+TURN_KD = 0
+""" Default value for turn kd """
