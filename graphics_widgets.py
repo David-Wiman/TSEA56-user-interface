@@ -232,11 +232,13 @@ class PlanWidget(QScrollArea):
             LOG("ERROR", "Instruction with id \"{}\" not found".format(id))
             return
 
+        print("Completed semi-auto drive instruction", id)
         self.draw_instructions()  # Redraw queue
 
     def clear_all(self):
         """ Remove all instructions and reset widget """
         self.instructions = []
+        print("Queue cleared")
         self.draw_instructions()  # Redraw queue
 
 
