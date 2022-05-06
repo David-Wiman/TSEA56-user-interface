@@ -52,6 +52,7 @@ class Socket(QObject):
         self.pSocket.connected.connect(self.on_connected)
         self.pSocket.disconnected.connect(self.on_disconnected)
         self.pSocket.errorOccurred.connect(self.on_error)
+        self.overflow = ""
 
     def connect(self):
         """ Connect socket to host """
@@ -82,18 +83,27 @@ class Socket(QObject):
         self.pSocket.flush()  # Clear buffer after send
 
     def on_recieved(self):
+        """ Parses messages in buffer when ready signal is recieved """
         bytes = self.pSocket.readAll()
         print("Reading data:", bytes)
 
-        message = str(bytes)[2:-1]  # Extract message
-        type, data = get_type_and_data(message)
+        recieved = str(bytes)[2:-1]  # Extract string from buffer
+        messages = recieved.split(r"\n")
+        messages[0] = self.overflow + messages[0]  # Prepend previous overflow
+        self.overflow = ""
 
-        if type == "DriveData":
-            backend_signals().new_drive_data.emit(DriveData.from_json(data))
-        elif type == "InstructionId":
-            backend_signals().remove_semi_instruction.emit(str(data))
-        else:
-            print("Unknown type: " + type, "\n"+str(data))
+        for message in messages[:-1]:
+            type, data = get_type_and_data(message)
+
+            if type == "DriveData":
+                backend_signals().new_drive_data.emit(DriveData.from_json(data))
+            elif type == "InstructionId":
+                backend_signals().remove_semi_instruction.emit(str(data))
+            else:
+                print("Unknown type: " + type, "\n"+str(data))
+                self.log("Unknown data recieved from car", "WARN")
+
+        self.overflow = messages[-1]  # Last message is always any overflow
 
     def on_error(self, error):
         print(error)
