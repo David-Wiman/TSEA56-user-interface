@@ -261,22 +261,22 @@ class MapCreatorWidget(QGraphicsView):
         for node in self.nodes:
             scene.addItem(node)
 
-        scene.addItem(Edge(self.nodes[0], self.nodes[1]))
-        scene.addItem(Edge(self.nodes[0], self.nodes[10]))
-        scene.addItem(Edge(self.nodes[1], self.nodes[2]))
-        scene.addItem(Edge(self.nodes[1], self.nodes[11]))
-        scene.addItem(Edge(self.nodes[2], self.nodes[3]))
-        scene.addItem(Edge(self.nodes[2], self.nodes[11]))
-        scene.addItem(Edge(self.nodes[3], self.nodes[4]))
-        scene.addItem(Edge(self.nodes[4], self.nodes[5]))
-        scene.addItem(Edge(self.nodes[5], self.nodes[6]))
-        scene.addItem(Edge(self.nodes[6], self.nodes[7]))
-        scene.addItem(Edge(self.nodes[7], self.nodes[8]))
-        scene.addItem(Edge(self.nodes[7], self.nodes[12]))
-        scene.addItem(Edge(self.nodes[8], self.nodes[9]))
-        scene.addItem(Edge(self.nodes[8], self.nodes[12]))
-        scene.addItem(Edge(self.nodes[9], self.nodes[10]))
-        scene.addItem(Edge(self.nodes[11], self.nodes[12]))
+        scene.addItem(Edge(self.nodes[0], self.nodes[1], 1))
+        scene.addItem(Edge(self.nodes[0], self.nodes[10], 5))
+        scene.addItem(Edge(self.nodes[1], self.nodes[2], 2))
+        scene.addItem(Edge(self.nodes[1], self.nodes[11], 2))
+        scene.addItem(Edge(self.nodes[2], self.nodes[3], 1))
+        scene.addItem(Edge(self.nodes[2], self.nodes[11], 2))
+        scene.addItem(Edge(self.nodes[3], self.nodes[4], 1))
+        scene.addItem(Edge(self.nodes[4], self.nodes[5], 2))
+        scene.addItem(Edge(self.nodes[5], self.nodes[6], 3))
+        scene.addItem(Edge(self.nodes[6], self.nodes[7], 1))
+        scene.addItem(Edge(self.nodes[7], self.nodes[8], 2))
+        scene.addItem(Edge(self.nodes[7], self.nodes[12], 2))
+        scene.addItem(Edge(self.nodes[8], self.nodes[9], 1))
+        scene.addItem(Edge(self.nodes[8], self.nodes[12], 2))
+        scene.addItem(Edge(self.nodes[9], self.nodes[10], 1))
+        scene.addItem(Edge(self.nodes[11], self.nodes[12], 1))
 
         space_const = Node.RADIUS * 1.5
         self.nodes[0].setPos(-2*space_const, 2*space_const)
@@ -407,6 +407,28 @@ def get_sorted_next_nodes(prev: Node, curr: Node):
     print("Sorted: ", [node.name for node in next_nodes])
 
 
+def edge_weight_str(node_list: list[Node], node_str1: str, node_str2: str):
+    node1: Node
+    node2: Node
+
+    for node in node_list:
+        if node.name == node_str1[0:-1]:
+            node1 = node
+        elif node.name == node_str2[0:-1]:
+            node2 = node
+
+    return edge_weight(node1, node2)
+
+
+def edge_weight(node1: Node, node2: Node):
+    for edge in node1.edge_list:
+        if edge.get_other_node(node1).name == node2.name:
+            return edge.weight
+
+    print("No edge found between", node1.name, "and", node2.name)
+    return None
+
+
 def connect_node_pair(map: MapData, previous: Node, current: Node,
                       visited: list[str], intersections: list[list[Node]],
                       reversed=False):
@@ -440,11 +462,11 @@ def connect_node_pair(map: MapData, previous: Node, current: Node,
             continue
 
         if reversed:
-            map.connect_node(current1, next1, 0)
-            map.connect_node(next2, current2, 0)
+            map.connect_node(current1, next1, edge_weight(current, next))
+            map.connect_node(next2, current2, edge_weight(next, current))
         else:
-            map.connect_node(next1, current1, 0)
-            map.connect_node(current2, next2, 0)
+            map.connect_node(next1, current1, edge_weight(next, current))
+            map.connect_node(current2, next2, edge_weight(current, next))
 
         # Connect next node pair
         connect_node_pair(map, current, next, visited, intersections, reversed)
@@ -454,7 +476,7 @@ def connect_node_pair(map: MapData, previous: Node, current: Node,
         reversed = not reversed
 
     print("Return from", current.name)
-
+    return
     # Print unconnected nodes
     print([node for node in visited if len(map.map[node]) < 1])
     for node in visited:
@@ -478,8 +500,8 @@ def create_map_from_graph(nodes: list[Node]) -> MapData:
 
     prev_node = nodes[0]
     start_node = nodes[1]
-    map.connect_node(prev_node.name+"2", start_node.name+"2", 0)
-    map.connect_node(start_node.name+"1", prev_node.name+"1", 0)
+    map.connect_node(prev_node.name+"2", start_node.name+"2", edge_weight(prev_node, start_node))
+    map.connect_node(start_node.name+"1", prev_node.name+"1", edge_weight(prev_node, start_node))
 
     connect_node_pair(map, prev_node, start_node, visited, intersections)
     print("Intersections: ", len(intersections))
@@ -517,7 +539,7 @@ def connect_intersection(map: MapData, intersec_nodes: list[Node]):
         for exit in exit_nodes:
             if exit[0:-1] != entry[0:-1]:
                 # Connect all entries to exits, except on the same side (eg L1 and L2)
-                map.connect_node(entry, exit, 0)
+                map.connect_node(entry, exit, edge_weight_str(intersec_nodes, entry, exit))
 
 
 if __name__ == "__main__":
