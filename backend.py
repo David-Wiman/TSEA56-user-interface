@@ -108,9 +108,12 @@ class Socket(QObject):
     def on_error(self, error):
         print(error)
         if error == QAbstractSocket.ConnectionRefusedError:
-            self.log('Unable to send data to port: "{}"'.format(PORT), "ERROR")
+            self.log("Connection was refused", "ERROR")
+        if error == QAbstractSocket.RemoteHostClosedError:
+            self.log("Remote closed connection incorrectly", "ERROR")
 
     def on_connected(self):
+        backend_signals().clear_semi_instructions.emit()
         self.log("Connected")
 
     def on_disconnected(self):
