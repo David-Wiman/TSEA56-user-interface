@@ -2,24 +2,35 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
-from data import CarData, ManualDriveInstruction, get_type_and_data
-
-PORT = 1234
-URL = "192.168.1.31"
+from config import PORT, SERVER_IP
+from data import (DriveData, ManualDriveInstruction, SemiDriveInstruction,
+                  get_type_and_data)
 
 
 class BackendSignals(QObject):
-    """ A singleton class, containing the signals from the backend needed to update UI """
+    """ A singleton class, containing the signals needed to update UI """
 
     # Maintain only one instance
     _instance = None
 
-    new_car_data = Signal(CarData)  # New car data has been recieved
-    log_msg = Signal(str, str)  # Severity and message of log
+    new_drive_data = Signal(DriveData)
+    """ New drive data has been recieved from the car"""
+
+    log_msg = Signal(str, str)
+    """ New severity and message has been sent to logger """
+
+    new_semi_instruction = Signal(SemiDriveInstruction)
+    """ New semi-auto instruction has been sent """
+
+    remove_semi_instruction = Signal(str)
+    """ Call to remove a semi-auto instruction, with provided id """
+
+    clear_semi_instructions = Signal()
+    """ Removes all semi-auto instructions for ui """
 
 
 def backend_signals():
-    """ Returns instance of the current backend signals """
+    """ Returns instance of the current BackendSignals """
     if BackendSignals._instance is None:
         BackendSignals._instance = BackendSignals(QApplication.instance())
     return BackendSignals._instance
@@ -38,26 +49,28 @@ class Socket(QObject):
         self.pSocket.connected.connect(self.on_connected)
         self.pSocket.disconnected.connect(self.on_disconnected)
         self.pSocket.errorOccurred.connect(self.on_error)
+        self.overflow = ""
 
     def connect(self):
         """ Connect socket to host """
-        self.log("Connecting to server....")
-        self.pSocket.connectToHost(URL, PORT)
+        self.log("Connecting to car....")
+        self.pSocket.connectToHost(SERVER_IP, PORT)
 
     def disconnect(self):
         """ Disconnect socket from host """
-        self.log("Disconnecting from server...")
+        self.log("Disconnecting from car...")
         self.pSocket.disconnectFromHost()
 
-    def hard_stop_car(self):
+    def emergency_stop_car(self):
         """ Sends emergency stop signal to car """
         self.log("EMERGENCY STOP", "WARN")
         self.send_message("STOP")
 
     def send_message(self, message: str):
-        """ Sends message to server. Throws if connection not valid. """
+        """ Sends message to car. Throws if connection not valid. """
         if (not self.pSocket.state() == QAbstractSocket.ConnectedState):
-            self.log("No connection to server", "ERROR")
+            self.log("No connection to car", "ERROR")
+            print("Error sending:\n", message)
             raise ConnectionError("Socket not Connected")
 
         message += "\n"  # Add terminating char
@@ -67,24 +80,37 @@ class Socket(QObject):
         self.pSocket.flush()  # Clear buffer after send
 
     def on_recieved(self):
+        """ Parses messages in buffer when ready signal is recieved """
         bytes = self.pSocket.readAll()
         print("Reading data:", bytes)
-        message = str(bytes)
-        type, data = get_type_and_data(message)
 
-        if type == "CarData":
-            backend_signals().new_car_data.emit(CarData.from_json(data))
-        else:
-            print("Unknown type: " + type, "\n"+str(data))
+        recieved = str(bytes)[2:-1]  # Extract string from buffer
+        messages = recieved.split(r"\n")
+        messages[0] = self.overflow + messages[0]  # Prepend previous overflow
+        self.overflow = ""
+
+        for message in messages[:-1]:
+            type, data = get_type_and_data(message)
+
+            if type == "DriveData":
+                backend_signals().new_drive_data.emit(DriveData.from_json(data))
+            elif type == "InstructionId":
+                backend_signals().remove_semi_instruction.emit(str(data))
+            else:
+                print("Unknown type: " + type, "\n"+str(data))
+                self.log("Unknown data recieved from car", "WARN")
+
+        self.overflow = messages[-1]  # Last message is always any overflow
 
     def on_error(self, error):
         print(error)
         if error == QAbstractSocket.ConnectionRefusedError:
-            self.log('Unable to send data to port: "{}"'.format(PORT), "ERROR")
-            self.log("trying to reconnect", "ERROR")
-            QTimer.singleShot(1000, self.slotSendMessage)
+            self.log("Connection was refused", "ERROR")
+        if error == QAbstractSocket.RemoteHostClosedError:
+            self.log("Remote closed connection incorrectly", "ERROR")
 
     def on_connected(self):
+        backend_signals().clear_semi_instructions.emit()
         self.log("Connected")
 
     def on_disconnected(self):
@@ -119,9 +145,6 @@ if __name__ == '__main__':
     client = Socket(app)
 
     QTimer.singleShot(1100, lambda: send_message(client))
-    #QTimer.singleShot(2000, lambda: ping(client))
-    #QTimer.singleShot(3000, lambda: send_message(client, "YO!"))
-    #QTimer.singleShot(5000, lambda: close)
     QTimer.singleShot(10000, app.exit)
 
     app.exec()

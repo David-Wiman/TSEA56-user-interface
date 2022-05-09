@@ -1,14 +1,23 @@
 from time import localtime, time
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
-                               QPlainTextEdit, QPushButton, QSizePolicy,
-                               QStackedWidget, QStyle, QTabWidget, QToolButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
+from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
+                               QLabel, QLineEdit, QPlainTextEdit, QPushButton,
+                               QScrollArea, QSizePolicy, QStackedWidget,
+                               QStyle, QTabWidget, QToolButton, QVBoxLayout,
+                               QWidget)
 
 from backend import backend_signals, socket
-from data import CarData, ManualDriveInstruction
+from config import (CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE,
+                    SPEED_KI, SPEED_KP, STEER_KD, STEER_KP, TURN_KD, TURN_KP)
+from data import (Direction, DriveData, ManualDriveInstruction,
+                  ParameterConfiguration, SemiDriveInstruction)
+
+
+def LOG(severity: str, message: str):
+    """ Logs message with severity to LogWidget"""
+    backend_signals().log_msg.emit(severity, message)
 
 
 class PlaceHolder(QLabel):
@@ -31,35 +40,32 @@ class MapWidget(PlaceHolder):
         self.setStyleSheet("border: 1px solid grey")
 
 
-class DataField(QLabel):
-    """ Custom label to display car data field """
-
-    def __init__(self, label: str, data, unit: str):
-        super().__init__()
-        self.label = label
-        self.unit = unit
-
-        self.update_data(data)
-        self.resize(90, 50)
-        self.setStyleSheet("border: 0px")
-
-    def update_data(self, data):
-        """ Updates field with new data, but same label and unit """
-        label_padded = self.label + ":\t\t"
-        if len(self.label) < 8:
-            label_padded += "\t"  # Fix alignment for short labels
-
-        self.setText(label_padded + str(data) + " " + self.unit)
-
-
 class DataWidget(QFrame):
     """ A box which lists the most recent driving data """
 
-    DATA_FILENAME = "data_output.txt"
+    class DataField(QLabel):
+        """ Custom label to display car's drive data field """
+
+        def __init__(self, label: str, data, unit: str):
+            super().__init__()
+            self.label = label
+            self.unit = unit
+
+            self.update_data(data)
+            self.resize(90, 50)
+            self.setStyleSheet("border: 0px")
+
+        def update_data(self, data):
+            """ Updates field with new data, but same label and unit """
+            label_padded = self.label + ":\t\t"
+            if len(self.label) < 8:
+                label_padded += "\t"  # Fix alignment for short labels
+
+            self.setText(label_padded + str(data) + " " + self.unit)
 
     def __init__(self):
         super().__init__()
-        self.all_data: list[CarData] = []
+        self.all_data: list[DriveData] = []
 
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.setMinimumWidth(250)
@@ -85,15 +91,15 @@ class DataWidget(QFrame):
         layout.addLayout(layout_h)
 
         # Widget data labels
-        self.labels: list[DataField] = []
-        self.labels.append(DataField("Körtid", 0, "s"))
-        self.labels.append(DataField("Gaspådrag", 0, ""))
-        self.labels.append(DataField("Styrutslag", 0, ""))
-        self.labels.append(DataField("Hastighet", 0, "cm/s"))
-        self.labels.append(DataField("Körsträcka", 0, "cm"))
-        self.labels.append(DataField("Hinderavstånd", 0, "cm"))
-        self.labels.append(DataField("Lateral", 0, "cm"))
-        self.labels.append(DataField("Vinkelavvikelse", 0, "rad"))
+        self.labels: list[self.DataField] = []
+        self.labels.append(self.DataField("Körtid", 0, "s"))
+        self.labels.append(self.DataField("Gaspådrag", 0, ""))
+        self.labels.append(self.DataField("Styrutslag", 0, ""))
+        self.labels.append(self.DataField("Hastighet", 0, "cm/s"))
+        self.labels.append(self.DataField("Körsträcka", 0, "m"))
+        self.labels.append(self.DataField("Hinderavstånd", 0, "cm"))
+        self.labels.append(self.DataField("Lateral", 0, "cm"))
+        self.labels.append(self.DataField("Vinkelavvikelse", 0, "grader"))
 
         for label in self.labels:
             # Add data labels to screen
@@ -102,34 +108,141 @@ class DataWidget(QFrame):
         self.setStyleSheet("border: 1px solid grey")
 
         # Automatically update data when it arrives from socket
-        backend_signals().new_car_data.connect(self.update_data)
+        backend_signals().new_drive_data.connect(self.update_data)
 
-    def update_data(self, data: CarData):
-        self.labels[0].update_data(data.time)
+    def update_data(self, data: DriveData):
+        self.labels[0].update_data(int(data.elapsed_time / 1000))  # ms-> s
         self.labels[1].update_data(data.throttle)
         self.labels[2].update_data(data.steering)
-        self.labels[3].update_data(data.velocity)
-        self.labels[4].update_data(data.driven_distance)
-        self.labels[5].update_data(data.obsticle_distance)
+        self.labels[3].update_data(data.speed / 10)  # mm/s -> cm/s
+        self.labels[4].update_data(data.driving_distance / 10)  # dm -> m
+        self.labels[5].update_data(data.obstacle_distance)
         self.labels[6].update_data(data.lateral_position)
-        self.all_data.append(data)
+        self.labels[7].update_data(data.angle)
+        self.all_data.append(data)  # Add data to history
 
     def save_data(self):
-        """ Save all car data to file """
-        with open(self.DATA_FILENAME, "w") as file:
-            file.write("\n".join([data.to_json() for data in self.all_data]))
+        """ Save all drive signals as csv files """
 
-        backend_signals().log_msg.emit(
-            "INFO", "Saved all car data to \"{}\"".format(self.DATA_FILENAME))
+        self.save_signal("throttle",
+                         [str(data.throttle) for data in self.all_data])
+
+        self.save_signal("steering",
+                         [str(data.steering) for data in self.all_data])
+
+        self.save_signal("speed",
+                         [str(data.speed) for data in self.all_data])
+
+        self.save_signal("driving_distance",
+                         [str(data.driving_distance) for data in self.all_data])
+
+        self.save_signal("obstacle_distance",
+                         [str(data.obstacle_distance) for data in self.all_data])
+
+        self.save_signal("lateral_position",
+                         [str(data.lateral_position) for data in self.all_data])
+
+        self.save_signal("angle",
+                         [str(data.angle) for data in self.all_data])
+
+        LOG("INFO", "Saved all drive data to folder \"{}\"".format(DATA_PATH))
+
+    def save_signal(self, name, data_list):
+        """ Saves list of strings as csv-file with name """
+        fname = DATA_PATH + name + ".csv"
+
+        with open(fname, "w") as file:
+            file.write(",".join(data_list) + "\n")
+            file.write(",".join([str(data.elapsed_time)
+                       for data in self.all_data]))
+            file.close()
+        print("Saved " + name + " data to: " + fname)
 
 
-class PlanWidget(PlaceHolder):
+class PlanWidget(QScrollArea):
     """ A box that lists the currently planned driving instructions """
 
+    class InstructionWidget(QLabel):
+        """ Small widget showing an arrow corresponding to a drive direction """
+
+        def __init__(self, direction: Direction = 1):
+            super().__init__()
+            self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            self.setFixedSize(90, 120)
+
+            # Set icon correspoding to direction
+            icon_name = ""
+            if direction == Direction.FWRD:
+                icon_name = "up_arrow.png"
+            elif direction == Direction.LEFT:
+                icon_name = "left_arrow.png"
+            elif direction == Direction.RIGHT:
+                icon_name = "right_arrow.png"
+
+            self.setPixmap(QPixmap("res/" + icon_name))
+
+            self.setStyleSheet("border: none")
+
     def __init__(self):
-        super().__init__("Plan")
+        super().__init__()
+        self.instructions: list[SemiDriveInstruction] = []
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setWidgetResizable(True)
+
+        # Draw all current instructions in list
+        self.draw_instructions()
+
+        # Update gui when instructions are created or deleted
+        backend_signals().new_semi_instruction.connect(self.add_instruction)
+        backend_signals().remove_semi_instruction.connect(self.remove_instruction)
+        backend_signals().clear_semi_instructions.connect(self.clear_all)
+
         self.setStyleSheet("border: 1px solid grey")
+
+    def draw_instructions(self):
+        queue = QWidget()
+        queue.setStyleSheet("border: none")
+        self.setWidget(queue)
+
+        layout = QHBoxLayout(queue)
+        layout.setSpacing(15)
+
+        for instruction in self.instructions:
+            layout.addWidget(self.InstructionWidget(instruction.direction))
+
+        layout.addStretch()  # Left align padding
+
+    def add_instruction(self, instruction: SemiDriveInstruction):
+        """ Adds instruction to plan """
+        self.instructions.append(instruction)
+
+        layout = self.widget().layout()
+        # Add instruction to end, but before the padding
+        layout.insertWidget(
+            layout.count()-1, self.InstructionWidget(instruction.direction))
+
+    def remove_instruction(self, id: str):
+        """ Removes instruction, if it exists """
+        list_len = len(self.instructions)
+
+        # Remove instruction with given id
+        self.instructions = [ins for ins in self.instructions if ins.id != id]
+
+        if len(self.instructions) == list_len:
+            # No intruction with the id existed
+            LOG("ERROR", "Instruction with id \"{}\" not found".format(id))
+            return
+
+        print("Completed semi-auto drive instruction", id)
+        self.draw_instructions()  # Redraw queue
+
+    def clear_all(self):
+        """ Remove all instructions and reset widget """
+        self.instructions = []
+        print("Queue cleared")
+        self.draw_instructions()  # Redraw queue
 
 
 class LogWidget(QTabWidget):
@@ -142,12 +255,12 @@ class LogWidget(QTabWidget):
         self.logger = QPlainTextEdit(self)
         self.logger.setReadOnly(True)
         self.text = ""
-        backend_signals().log_msg.connect(self.add_log)  # Add log from backend
+        backend_signals().log_msg.connect(self.add_log)  # Add a log from backend
 
         self.addTab(self.logger, "Logg")
 
     def add_log(self, severity, message):
-        """ Adds message to the log widget on GUI """
+        """ Adds message with severity and timestamp to the log widget on GUI """
         current_time = \
             str(localtime().tm_hour).zfill(2) + ":" + \
             str(localtime().tm_min).zfill(2) + ":" + \
@@ -157,7 +270,78 @@ class LogWidget(QTabWidget):
         self.logger.appendPlainText(entry)
 
 
-class ControlsWidget(QStackedWidget):
+class ParameterWidget(QWidget):
+    """ A popup widget where parameters can be configured """
+
+    def __init__(self):
+        super().__init__()
+
+        layout = QFormLayout(self)
+        layout.setSpacing(10)
+
+        # Add fields for each parameter
+        self.steer_kp_textbox = QLineEdit()
+        self.steer_kd_textbox = QLineEdit()
+        self.speed_kp_textbox = QLineEdit()
+        self.speed_ki_textbox = QLineEdit()
+        self.turn_kp_textbox = QLineEdit()
+        self.turn_kd_textbox = QLineEdit()
+        layout.addRow(QLabel("STEER_KP"), self.steer_kp_textbox)
+        layout.addRow(QLabel("STEER_KD"), self.steer_kd_textbox)
+        layout.addRow(QLabel("SPEED_KP"), self.speed_kp_textbox)
+        layout.addRow(QLabel("SPEED_KI"), self.speed_ki_textbox)
+        layout.addRow(QLabel("TURN_KP"), self.turn_kp_textbox)
+        layout.addRow(QLabel("TURN_KD"), self.turn_kd_textbox)
+
+        btn_layout = QHBoxLayout()
+
+        # Send and close buttons
+        send_btn = QPushButton("Skicka")
+        send_btn.clicked.connect(self.send_params)
+        cancel_btn = QPushButton("Stäng")
+        cancel_btn.clicked.connect(self.close_popup)
+
+        btn_layout.addWidget(send_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addRow(btn_layout)
+
+    def send_params(self):
+        """ Send entered paramters to car """
+        LOG("INFO", "Sending new parameters to car")
+
+        # Save entered params in object
+        self.params.steering_kp = int(self.steer_kp_textbox.text())
+        self.params.steering_kd = int(self.steer_kd_textbox.text())
+        self.params.speed_kp = int(self.speed_kp_textbox.text())
+        self.params.speed_ki = int(self.speed_ki_textbox.text())
+        self.params.turn_kp = int(self.turn_kp_textbox.text())
+        self.params.turn_kd = int(self.turn_kd_textbox.text())
+
+        socket().send_message(self.params.to_json())
+        self.close_popup()
+
+    def close_popup(self):
+        """ Close popup """
+        self.close()
+
+    def open_popup(self, params=ParameterConfiguration()):
+        """ Open parmater configuration dialogbox, provide current params instance """
+        self.params = params  # Update params
+
+        # Autofill text boxes with current params
+        self.steer_kp_textbox.setText(str(self.params.steering_kp))
+        self.steer_kd_textbox.setText(str(self.params.steering_kd))
+        self.speed_kp_textbox.setText(str(self.params.speed_kp))
+        self.speed_ki_textbox.setText(str(self.params.speed_ki))
+        self.turn_kp_textbox.setText(str(self.params.turn_kp))
+        self.turn_kd_textbox.setText(str(self.params.turn_kd))
+
+        self.setMinimumSize(300, 60)
+        self.setWindowTitle("Parameterkonfiguration")
+        self.show()
+
+
+class ControlsWidget(QWidget):
     """ A controls area where the user can control the car. Has different modes. """
 
     widget_index = {"manual": 0, "semi": 1, "auto": 2}
@@ -166,111 +350,106 @@ class ControlsWidget(QStackedWidget):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        layout = QHBoxLayout(self)
+        layout_l = QVBoxLayout()
+
+        # Initate parameters with default values
+        self.param_data = ParameterConfiguration(STEER_KP, STEER_KD,
+                                                 SPEED_KP, SPEED_KI,
+                                                 TURN_KP, TURN_KD)
+        param = ParameterWidget()
+
+        # Parameter button
+        param_btn = QPushButton("Parametrar")
+        param_btn.setFixedSize(125, 60)
+        param_btn.clicked.connect(lambda: param.open_popup(self.param_data))
+        layout_l.addWidget(param_btn)
+
+        # Emergency stop button
+        stop_btn = QPushButton('STOP')
+        stop_btn.setFixedSize(125, 125)
+        stop_btn.setStyleSheet(
+            "background-color: red; border : 2px solid darkred;font-size: 20px;font-family: Arial")
+        stop_btn.clicked.connect(socket().emergency_stop_car)
+        layout_l.addWidget(stop_btn)
+
+        # Add stop and param buttons stacked on the left
+        layout.addLayout(layout_l)
+
+        self.controls = QStackedWidget()
+        self.controls.setStyleSheet("border: none")
+
         manual_mode = ManualMode()
-        semi_mode = PlaceHolder("Semi autonomous controls")
+        semi_mode = SemiMode()
         auto_mode = PlaceHolder("Fully autonomous controls")
 
-        self.insertWidget(self.widget_index["manual"], manual_mode)
-        self.insertWidget(self.widget_index["semi"], semi_mode)
-        self.insertWidget(self.widget_index["auto"], auto_mode)
+        self.controls.insertWidget(self.widget_index["manual"], manual_mode)
+        self.controls.insertWidget(self.widget_index["semi"], semi_mode)
+        self.controls.insertWidget(self.widget_index["auto"], auto_mode)
+
+        # Add controls on the right
+        layout.addWidget(self.controls)
 
         self.setStyleSheet("border: 1px solid grey")
 
     def set_index(self, mode):
-        self.setCurrentIndex(self.widget_index[mode])
+        """ Change which controls are currently visible """
+        self.controls.setCurrentIndex(self.widget_index[mode])
 
 
 class ManualMode(QWidget):
     """ The buttons needed for manual driving """
 
-    MAX_SEND_RATE = 1/10  # Frequency (Hz)
-    CAR_ACC = 100         # Max throttle
-    FULL_STEER = 280      # Max steer (right)
-    HALF_STEER = 100      # Half steer
+    class DriveButton(QToolButton):
+        """ A button for steering the car in manual mode"""
+
+        def __init__(self, action, arrow):
+            super().__init__()
+
+            size_policy = QSizePolicy()
+            size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
+            size_policy.setVerticalPolicy(QSizePolicy.Expanding)
+            size_policy.setWidthForHeight(True)  # Ensure square button
+
+            self.clicked.connect(action)
+            self.setAutoRepeat(True)
+            self.setAutoRepeatInterval(MAX_SEND_RATE * 250)
+            self.setArrowType(arrow)
+            self.setSizePolicy(size_policy)
+            self.setStyleSheet("border: 1px solid grey")
 
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-        # create push button - parameter
-        param_btn = QPushButton("Parametrar", self)
-        param_btn.setFixedSize(110, 60)
-
-        # create push button - stop
-        stop_btn = QPushButton('STOP', self)
-        stop_btn.setFixedSize(110, 110)
-        stop_btn.setStyleSheet(
-            "background-color: red; border : 2px solid darkred;font-size: 20px;font-family: Arial")
-        stop_btn.clicked.connect(socket().hard_stop_car)
-
-        layout = QHBoxLayout(self)
-
-        layout_left = QVBoxLayout()
-        layout_right = QGridLayout()
-        layout_left.addWidget(param_btn)
-        layout_left.addWidget(stop_btn)
-
-        self.create_drive_buttons(layout_right)
+        self.create_drive_buttons()
         self.setup_keyboard_shortcuts()
-
-        layout.addLayout(layout_left)
-        layout.addLayout(layout_right)
 
         self.timer = time()
 
-    def create_drive_buttons(self, layout):
-        size_policy = QSizePolicy()
-        size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
-        size_policy.setVerticalPolicy(QSizePolicy.Expanding)
-        size_policy.setWidthForHeight(True)
+    def create_drive_buttons(self):
+        """ Adds drive buttons in a 3x2 grid """
+        layout = QGridLayout(self)
 
-        fwrd = QToolButton()
-        fwrd.clicked.connect(self.send_fwrd)
-        fwrd.setAutoRepeat(True)
-        fwrd.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        fwrd.setArrowType(Qt.UpArrow)
-        fwrd.setSizePolicy(size_policy)
+        fwrd = self.DriveButton(self.send_fwrd, Qt.UpArrow)
         layout.addWidget(fwrd, 0, 1)
 
-        bwrd = QToolButton()
-        bwrd.clicked.connect(self.send_bwrd)
-        bwrd.setAutoRepeat(True)
-        bwrd.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        bwrd.setArrowType(Qt.DownArrow)
-        bwrd.setSizePolicy(size_policy)
+        bwrd = self.DriveButton(self.send_bwrd, Qt.DownArrow)
         layout.addWidget(bwrd, 1, 1)
 
-        left = QToolButton()
-        left.clicked.connect(self.send_left)
-        left.setAutoRepeat(True)
-        left.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        left.setArrowType(Qt.LeftArrow)
-        left.setSizePolicy(size_policy)
+        left = self.DriveButton(self.send_left, Qt.LeftArrow)
         layout.addWidget(left, 1, 0)
 
-        right = QToolButton()
-        right.clicked.connect(self.send_right)
-        right.setAutoRepeat(True)
-        right.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        right.setArrowType(Qt.RightArrow)
-        right.setSizePolicy(size_policy)
+        right = self.DriveButton(self.send_right, Qt.RightArrow)
         layout.addWidget(right, 1, 2)
 
-        fwrd_right = QToolButton()
-        fwrd_right.clicked.connect(self.send_fwrd_right)
-        fwrd_right.setAutoRepeat(True)
-        fwrd_right.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        fwrd_right.setArrowType(Qt.NoArrow)
-        fwrd_right.setSizePolicy(size_policy)
+        fwrd_right = self.DriveButton(self.send_fwrd_right, Qt.NoArrow)
         layout.addWidget(fwrd_right, 0, 2)
 
-        fwrd_left = QToolButton()
-        fwrd_left.clicked.connect(self.send_fwrd_left)
-        fwrd_left.setAutoRepeat(True)
-        fwrd_left.setAutoRepeatInterval(self.MAX_SEND_RATE * 250)
-        fwrd_left.setArrowType(Qt.NoArrow)
-        fwrd_left.setSizePolicy(size_policy)
+        fwrd_left = self.DriveButton(self.send_fwrd_left, Qt.NoArrow)
         layout.addWidget(fwrd_left, 0, 0)
+
+        self.setLayout(layout)
 
     def setup_keyboard_shortcuts(self):
         """ Create WASD keybord shortcuts """
@@ -293,41 +472,96 @@ class ManualMode(QWidget):
         shortcut_fwrd_left.activated.connect(self.send_fwrd_left)
 
     def send_fwrd(self):
-        self.send_drive_instruction(ManualDriveInstruction(self.CAR_ACC, 0))
+        self.send_drive_instruction(ManualDriveInstruction(CAR_ACC, 0))
 
     def send_bwrd(self):
         self.send_drive_instruction(ManualDriveInstruction(0, 0))
 
     def send_right(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, self.FULL_STEER))
+            ManualDriveInstruction(CAR_ACC, FULL_STEER))
 
     def send_left(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, -self.FULL_STEER))
+            ManualDriveInstruction(CAR_ACC, -FULL_STEER))
 
     def send_fwrd_right(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, self.HALF_STEER))
+            ManualDriveInstruction(CAR_ACC, HALF_STEER))
 
     def send_fwrd_left(self):
         self.send_drive_instruction(
-            ManualDriveInstruction(self.CAR_ACC, -self.HALF_STEER))
+            ManualDriveInstruction(CAR_ACC, -HALF_STEER))
 
     def send_drive_instruction(self, drive_instruction: ManualDriveInstruction):
-        # Sends drive intruction at approximately MAX_SEND_RATE (Hz)
+        """ Sends drive intruction at approximately MAX_SEND_RATE (Hz) """
         new_time = time()
-        if new_time - self.timer > self.MAX_SEND_RATE:
-            try:
-                socket().send_message(drive_instruction.to_json())
-            except ConnectionError as e:
-                print("ERROR:", e)
-
+        if new_time - self.timer > MAX_SEND_RATE:
+            socket().send_message(drive_instruction.to_json())
             self.timer = new_time  # Reset timer
+
+
+class SemiMode(QWidget):
+    """ Buttons needed to drive the car in semi-autonomous mode """
+
+    class DriveButton(QPushButton):
+        """ A button for steering the car in semi-autonomous mode  """
+        size_policy = QSizePolicy()
+        size_policy.setHorizontalPolicy(QSizePolicy.Expanding)
+        size_policy.setVerticalPolicy(QSizePolicy.Expanding)
+
+        def __init__(self, action, icon_path):
+            super().__init__()
+            self.setIcon(QIcon(icon_path))
+            self.setIconSize(QSize(90, 120))  # Set size to image size
+            self.clicked.connect(action)
+            self.setSizePolicy(self.size_policy)
+            self.setStyleSheet("border: 1px solid grey")
+
+    def __init__(self):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+        layout = QHBoxLayout(self)
+
+        left_btn = self.DriveButton(self.send_left, "res/left_arrow.png")
+        fwrd_btn = self.DriveButton(self.send_fwrd, "res/up_arrow.png")
+        right_btn = self.DriveButton(self.send_right, "res/right_arrow.png")
+
+        layout.addWidget(left_btn)
+        layout.addWidget(fwrd_btn)
+        layout.addWidget(right_btn)
+
+    def send_left(self):
+        self.send(SemiDriveInstruction(Direction.LEFT))
+
+    def send_fwrd(self):
+        self.send(SemiDriveInstruction(Direction.FWRD))
+
+    def send_right(self):
+        self.send(SemiDriveInstruction(Direction.RIGHT))
+
+    def send(self, instruction):
+        """ Send instruction to car and plan widget """
+        socket().send_message(instruction.to_json())
+        backend_signals().new_semi_instruction.emit(instruction)
 
 
 class ButtonsWidget(QWidget):
     """ Buttons that can change which drivning mode is used to steer the car """
+
+    class ModeButton(QPushButton):
+        """ A button that can toggle driving modes for the ControlWidget """
+
+        def __init__(self, label: str, action=lambda: None):
+            super().__init__()
+            self.setMinimumSize(110, 45)
+
+            self.setText(label)
+            self.clicked.connect(lambda: self.action(action))
+
+        def action(self, action):
+            action()
 
     def __init__(self, change_mode=lambda: None):
         super().__init__()
@@ -335,24 +569,10 @@ class ButtonsWidget(QWidget):
 
         layout = QHBoxLayout(self)
 
-        manual_btn = ModeButton("Manuell", lambda: change_mode("manual"))
-        semi_btn = ModeButton("Semiautonom", lambda: change_mode("semi"))
-        full_btn = ModeButton("Helautonom", lambda: change_mode("auto"))
+        manual_btn = self.ModeButton("Manuell", lambda: change_mode("manual"))
+        semi_btn = self.ModeButton("Semiautonom", lambda: change_mode("semi"))
+        full_btn = self.ModeButton("Helautonom", lambda: change_mode("auto"))
 
         layout.addWidget(manual_btn)
         layout.addWidget(semi_btn)
         layout.addWidget(full_btn)
-
-
-class ModeButton(QPushButton):
-    """ A button that can toggle driving modes for the ControlWidget """
-
-    def __init__(self, label: str, action=lambda: None):
-        super().__init__()
-        self.setMinimumSize(110, 45)
-
-        self.setText(label)
-        self.clicked.connect(lambda: self.action(action))
-
-    def action(self, action):
-        action()

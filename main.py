@@ -2,12 +2,10 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QMainWindow, QMenu,
                                QVBoxLayout, QWidget, QWidgetAction)
 
-from backend import socket
+from backend import backend_signals, socket
+from config import GUI_HEIGHT, GUI_WIDTH
 from graphics_widgets import (ButtonsWidget, ControlsWidget, DataWidget,
                               LogWidget, MapWidget, PlanWidget)
-
-GUI_WIDTH = 1280
-GUI_HEIGHT = 720
 
 
 class MainWindow(QMainWindow):
@@ -31,9 +29,12 @@ class MainWindow(QMainWindow):
         menu_bar = self.menuBar()
 
         file_menu = QMenu("File")
-        file_action = QAction("Connect to car", file_menu)
-        file_action.triggered.connect(self.connect_to_car)
-        file_menu.addAction(file_action)
+        connect_action = QAction("Connect to car", file_menu)
+        connect_action.triggered.connect(self.connect_to_car)
+        file_menu.addAction(connect_action)
+        clear_action = QAction("Clear plan", file_menu)
+        clear_action.triggered.connect(self.clear_instructions)
+        file_menu.addAction(clear_action)
         menu_bar.addMenu(file_menu)
 
         settings_menu = QMenu("Settings")
@@ -75,6 +76,9 @@ class MainWindow(QMainWindow):
 
     def connect_to_car(self):
         socket().connect()
+
+    def clear_instructions(self):
+        backend_signals().clear_semi_instructions.emit()
 
 
 if __name__ == "__main__":

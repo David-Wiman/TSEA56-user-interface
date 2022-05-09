@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 
 class JSONSerializable:
@@ -7,80 +8,106 @@ class JSONSerializable:
     def to_json(self, type_name: str) -> str:
         """ Creates a JSON-object from instance, with the type as top level key """
         payload = json.dumps(self, default=lambda o: o.__dict__,
-                             sort_keys=True, indent=4)
+                             sort_keys=True, indent=1)
+
+        # \n reserved for end of message char in socket communication
+        payload = payload.replace("\n", "")
         return "{" + "\"{}\": {}".format(type_name, payload) + "}"
 
 
-class CarData(JSONSerializable):
-    """ Simple dataclass to represent the car's status data """
+class DriveData(JSONSerializable):
+    """ Simple dataclass to represent the car's drive data """
 
     def __init__(self,
-                 time: int = 0,
+                 elapsed_time: int = 0,
                  throttle: int = 0,
                  steering: int = 0,
-                 velocity: int = 0,
-                 driven_distance: float = 0,
-                 obsticle_distance: int = 0,
+                 speed: int = 0,
+                 driving_distance: int = 0,
+                 obstacle_distance: int = 0,
                  lateral_position: int = 0,
-                 angle: float = 0):
-        self.time = time
+                 angle: int = 0):
+        self.elapsed_time = elapsed_time
         self.throttle = throttle
         self.steering = steering
-        self.velocity = velocity
-        self.driven_distance = driven_distance
-        self.obsticle_distance = obsticle_distance
+        self.speed = speed
+        self.driving_distance = driving_distance
+        self.obstacle_distance = obstacle_distance
         self.lateral_position = lateral_position
         self.angle = angle
 
-    def from_json(json_str: str):
-        """ Returns instance from json string """
-        dict = json.loads(json_str)
-        return CarData(dict["time"], dict["throttle"],
-                       dict["steering"], dict["velocity"],
-                       dict["driven_distance"], dict["obsticle_distance"],
-                       dict["lateral_position"], dict["angle"])
+    def from_json(json: dict):
+        """ Returns instance from json """
+        return DriveData(json["elapsed_time"], json["throttle"],
+                         json["steering"], json["speed"],
+                         json["driving_distance"], json["obstacle_distance"],
+                         json["lateral_position"], json["angle"])
 
     def to_json(self) -> str:
-        return super().to_json("CarData")
+        return super().to_json("DriveData")
 
 
 class ManualDriveInstruction(JSONSerializable):
     """ Simple dataclass to represent a drive instruction for the car """
 
-    throttle: int
-    steering: int
-
     def __init__(self, throttle: int = 0, steering: int = 0):
         self.throttle = throttle
         self.steering = steering
 
-    def from_json(json_str: str):
-        """ Returns instance from json string """
-        dict = json.loads(json_str)
-        return ManualDriveInstruction(dict["throttle"], dict["steering"])
+    def from_json(json: dict):
+        """ Returns instance from json """
+        return ManualDriveInstruction(json["throttle"], json["steering"])
 
     def to_json(self) -> str:
         return super().to_json("ManualDriveInstruction")
 
 
+class Direction:
+    """ Available directions the car can drive in the autonomous modes """
+    LEFT = 0
+    FWRD = 1
+    RIGHT = 2
+
+
+class SemiDriveInstruction(JSONSerializable):
+    """ Simple dataclass to represent a semi-autonomous drive instruction for the car """
+
+    def __init__(self, direction: Direction = Direction.FWRD):
+        self.direction = direction
+        self.id = str(uuid4())  # Assign unique id to instruction
+
+    def from_json(json: dict):
+        """ Returns instance from json """
+        return SemiDriveInstruction(json["direction"], json["id"])
+
+    def to_json(self) -> str:
+        return super().to_json("SemiDriveInstruction")
+
+
 class ParameterConfiguration(JSONSerializable):
     """ Simple dataclass to represent a parameter configuration for the car """
-    temp: int
 
-    def __init__(self, temp: int = 0):
-        self.temp = temp
+    def __init__(self, steering_kp=0, steering_kd=0, speed_kp=0,
+                 speed_ki=0, turn_kp=0, turn_kd=0):
+        self.steering_kp = steering_kp
+        self.steering_kd = steering_kd
+        self.speed_kp = speed_kp
+        self.speed_ki = speed_ki
+        self.turn_kp = turn_kp
+        self.turn_kd = turn_kd
 
-    def from_json(json_str: str):
-        """ Returns instance from json string """
-        dict = json.loads(json_str)
-        return ParameterConfiguration(dict["temp"])
+    def from_json(json: dict):
+        """ Returns instance from json """
+        return ParameterConfiguration(json["steering_kp"], json["steering_kd"],
+                                      json["speed_kp"], json["speed_ki"],
+                                      json["turn_kp"], json["turn_kd"])
 
     def to_json(self) -> str:
         return super().to_json("ParameterConfiguration")
 
 
 class MapData:
-    """ A graph respresentation of a map """
+    """ A graph representation of a map """
 
     def __init__(self, map: dict = {}):
         self.map = map
@@ -109,12 +136,12 @@ class MapData:
 
 
 def get_type_and_data(json_str):
-    """ Returns the data type and json payload """
+    """ Returns the data type and json data """
     try:
-        json_dict = json.loads(json_str)
+        json_data = json.loads(json_str)
     except json.JSONDecodeError as e:
         print(e.msg)
         return "Error", {}
-    data_type = next(iter(json_dict))  # Returns name of first key
+    data_type = next(iter(json_data))  # Returns name of first key
 
-    return data_type, json_dict[data_type]
+    return data_type, json_data[data_type]
