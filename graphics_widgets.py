@@ -155,6 +155,7 @@ class DataWidget(QFrame):
             file.write(",".join(data_list) + "\n")
             file.write(",".join([str(data.elapsed_time)
                        for data in self.all_data]))
+            file.close()
         print("Saved " + name + " data to: " + fname)
 
 
