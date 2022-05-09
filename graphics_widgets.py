@@ -162,7 +162,9 @@ class DataWidget(QFrame):
         fname = DATA_PATH + name + ".csv"
 
         with open(fname, "w") as file:
-            file.write(",".join(data_list))
+            file.write(",".join(data_list) + "\n")
+            file.write(",".join([str(data.elapsed_time)
+                       for data in self.all_data]))
         print("Saved " + name + " data to: " + fname)
 
 
