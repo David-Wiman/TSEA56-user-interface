@@ -32,20 +32,20 @@ MAX_SEND_RATE = 1/10
 """ Max rate at which manual instructions will be sent """
 
 # Default regulation control paramters
-STEER_KP = 1
+STEER_KP = 100
 """ Default value for steering kp """
 
-STEER_KD = 0
+STEER_KD = 150
 """ Default value for steering kd """
 
-SPEED_KP = 1
+SPEED_KP = 2
 """ Default value for speed kp """
 
-SPEED_KI = 0
+SPEED_KI = 2
 """ Default value for speed ki """
 
-TURN_KP = 1
+TURN_KP = 0
 """ Default value for turn kp """
 
-TURN_KD = 0
+TURN_KD = 150
 """ Default value for turn kd """
