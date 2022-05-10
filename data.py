@@ -7,6 +7,10 @@ from config import DEFAULT_MAP_PATH
 class JSONSerializable:
     """ Enables a simple dataclass to be serialized with JSON """
 
+    def wrap_json(self, type_name: str, body: str):
+        """ Wraps body with key, json formatted """
+        return "{" + "\"{}\": {}".format(type_name, body) + "}"
+
     def to_json(self, type_name: str) -> str:
         """ Creates a JSON-object from instance, with the type as top level key """
         payload = json.dumps(self, default=lambda o: o.__dict__,
@@ -14,7 +18,7 @@ class JSONSerializable:
 
         # \n reserved for end of message char in socket communication
         payload = payload.replace("\n", "")
-        return "{" + "\"{}\": {}".format(type_name, payload) + "}"
+        return self.wrap_json(type_name, payload)
 
 
 class DriveData(JSONSerializable):
@@ -86,6 +90,23 @@ class SemiDriveInstruction(JSONSerializable):
         return super().to_json("SemiDriveInstruction")
 
 
+class AutoDriveInstruction(JSONSerializable):
+    """ Simple dataclass to represent a fully-autonomous drive instruction for the car """
+
+    def __init__(self, nodes: list[str] = []):
+        self.nodes = nodes
+
+    def add_node(self, node: str):
+        self.nodes.append(node)
+
+    def from_json(json: list[str]):
+        """ Returns instance from json """
+        return AutoDriveInstruction(json)
+
+    def to_json(self) -> str:
+        return super().wrap_json("AutoDriveInstruction", str(self.nodes))
+
+
 class ParameterConfiguration(JSONSerializable):
     """ Simple dataclass to represent a parameter configuration for the car """
 
@@ -108,7 +129,7 @@ class ParameterConfiguration(JSONSerializable):
         return super().to_json("ParameterConfiguration")
 
 
-class MapData:
+class MapData(JSONSerializable):
     """ A graph representation of a map """
 
     def __init__(self, map: dict = {}):
@@ -172,12 +193,8 @@ class MapData:
         return MapData(json.loads(j_str)["MapData"])
 
     def to_json(self) -> str:
-        """ Creates a JSON-object of a map, with MapData as top level key """
-        payload = json.dumps(self.map)
-
-        # \n reserved for end of message char in socket communication
-        payload = payload.replace("\n", "")
-        return "{" + "\"{}\": {}".format("MapData", payload) + "}"
+        """ Creates a JSON-object of a map, with the type as top level key """
+        return self.wrap_json("MapData", json.dumps(self.map))
 
 
 def get_type_and_data(json_str):
