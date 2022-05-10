@@ -42,6 +42,9 @@ class MainWindow(QMainWindow):
         edit_map_action = QAction("Edit map", map_menu)
         edit_map_action.triggered.connect(self.open_map_editor)
         map_menu.addAction(edit_map_action)
+        map_send = QAction("Send map to car", map_menu)
+        map_send.triggered.connect(self.send_map)
+        map_menu.addAction(map_send)
         menu_bar.addMenu(map_menu)
 
     def create_grid(self):
@@ -80,6 +83,14 @@ class MainWindow(QMainWindow):
 
     def clear_instructions(self):
         backend_signals().clear_semi_instructions.emit()
+
+    def send_map(self):
+        """ Sends current map instance to car """
+        map: str
+        with open("map/map.json", "r") as file:
+            map = file.read().rstrip().replace("\n", "").replace("  ", "")
+        backend_signals().log_msg.emit("INFO", "Sending map to car")
+        socket().send_message(map)
 
 
 if __name__ == "__main__":

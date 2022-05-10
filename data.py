@@ -90,21 +90,26 @@ class SemiDriveInstruction(JSONSerializable):
         return super().to_json("SemiDriveInstruction")
 
 
-class AutoDriveInstruction(JSONSerializable):
-    """ Simple dataclass to represent a fully-autonomous drive instruction for the car """
+class DriveMission(JSONSerializable):
+    """ Simple dataclass to represent a fully-autonomous drive mission for the car """
 
-    def __init__(self, nodes: list[str] = []):
-        self.nodes = nodes
+    def __init__(self, destination: list[str] = []):
+        self.destinations = destination
 
-    def add_node(self, node: str):
-        self.nodes.append(node)
+    def clear(self):
+        """ Clears all destinations from mission """
+        self.destinations = []
+
+    def add_destination(self, dest: str):
+        """ Adds a new destination to mission """
+        self.destinations.append(dest)
 
     def from_json(json: list[str]):
         """ Returns instance from json """
-        return AutoDriveInstruction(json)
+        return DriveMission(json)
 
     def to_json(self) -> str:
-        return super().wrap_json("AutoDriveInstruction", str(self.nodes))
+        return super().wrap_json("DriveMission", str(self.destinations))
 
 
 class ParameterConfiguration(JSONSerializable):

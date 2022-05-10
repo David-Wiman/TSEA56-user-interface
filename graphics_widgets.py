@@ -393,7 +393,7 @@ class ControlsWidget(QWidget):
 
         manual_mode = ManualMode()
         semi_mode = SemiMode()
-        auto_mode = PlaceHolder("Fully autonomous controls")
+        auto_mode = AutoMode()
 
         self.controls.insertWidget(self.widget_index["manual"], manual_mode)
         self.controls.insertWidget(self.widget_index["semi"], semi_mode)
@@ -557,6 +557,80 @@ class SemiMode(QWidget):
         """ Send instruction to car and plan widget """
         socket().send_message(instruction.to_json())
         backend_signals().new_semi_instruction.emit(instruction)
+
+
+class AutoMode(QWidget):
+    """ Controls needed to drive the car in fully autonomous mode """
+
+    def __init__(self):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.setStyleSheet("border: 1px solid grey")
+
+        layout = QHBoxLayout(self)
+
+        # Input area
+        self.destination_input = QPlainTextEdit()
+        self.destination_input.setPlaceholderText("Destination")
+        font = self.destination_input.font()
+        font.setPointSize(25)
+        self.destination_input.setFont(font)
+        layout.addWidget(self.destination_input)
+
+        # Buttons
+        btn_layout = QVBoxLayout()
+        self.create_buttons(btn_layout)
+        layout.addLayout(btn_layout)
+
+        self.auto = DriveMission()
+
+    def create_buttons(self, btn_layout: QVBoxLayout):
+        """ Creates buttons for modifying drive mission """
+        # Add destination button
+        add_btn = QPushButton("Add")
+        add_btn.setFixedSize(100, 50)
+        add_btn.clicked.connect(self.add_destination)
+        btn_layout.addWidget(add_btn)
+
+        # Clear mission button
+        clear_btn = QPushButton("Clear")
+        clear_btn.setFixedSize(100, 50)
+        clear_btn.clicked.connect(self.clear_mission)
+        btn_layout.addWidget(clear_btn)
+
+        # Start mission button
+        start_btn = QPushButton("Start")
+        start_btn.setFixedSize(100, 50)
+        start_btn.clicked.connect(self.send_mission)
+        btn_layout.addWidget(start_btn)
+
+    def clear_mission(self):
+        """ Deletes all destinations from mission """
+        self.auto.clear()
+        self.destination_input.setPlainText("")  # Clear input space
+
+    def add_destination(self):
+        """ Adds a new destination to the current drive mission """
+        new_dest = self.destination_input.toPlainText().strip()  # Get input
+
+        if new_dest == "":
+            LOG("ERROR", "Can't add empty node")
+            return
+        elif [new_dest] == self.auto.destinations[-1:]:
+            # New destination is same as last
+            LOG("ERROR", "Can't drive to self, destination " + new_dest)
+            return
+
+        print("Adding new destination", new_dest)
+
+        self.auto.add_destination(new_dest)
+        self.destination_input.setPlainText("")  # Clear input space
+        print(self.auto.to_json())
+
+    def send_mission(self):
+        """ Send current drive mission to car """
+        LOG("INFO", "Sending driving mission")
+        socket().send_message(self.auto.to_json())
 
 
 class ButtonsWidget(QWidget):
