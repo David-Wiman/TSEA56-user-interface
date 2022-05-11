@@ -44,8 +44,8 @@ SPEED_KP = 2
 SPEED_KI = 2
 """ Default value for speed ki """
 
-TURN_KP = 0
-""" Default value for turn kp """
-
 TURN_KD = 150
 """ Default value for turn kd """
+
+ANGLE_OFFSET = 1610
+""" Value that makes the wheel point straight forward """

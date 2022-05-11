@@ -9,8 +9,9 @@ from PySide6.QtWidgets import (QFormLayout, QFrame, QGridLayout, QHBoxLayout,
                                QWidget)
 
 from backend import backend_signals, socket
-from config import (CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE,
-                    SPEED_KI, SPEED_KP, STEER_KD, STEER_KP, TURN_KD, TURN_KP)
+from config import (ANGLE_OFFSET, CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER,
+                    MAX_SEND_RATE, SPEED_KI, SPEED_KP, STEER_KD, STEER_KP,
+                    TURN_KD)
 from data import (Direction, DriveData, ManualDriveInstruction,
                   ParameterConfiguration, SemiDriveInstruction)
 
@@ -294,14 +295,14 @@ class ParameterWidget(QWidget):
         self.steer_kd_textbox = QLineEdit()
         self.speed_kp_textbox = QLineEdit()
         self.speed_ki_textbox = QLineEdit()
-        self.turn_kp_textbox = QLineEdit()
+        self.angle_offset_textbox = QLineEdit()
         self.turn_kd_textbox = QLineEdit()
         layout.addRow(QLabel("STEER_KP"), self.steer_kp_textbox)
         layout.addRow(QLabel("STEER_KD"), self.steer_kd_textbox)
         layout.addRow(QLabel("SPEED_KP"), self.speed_kp_textbox)
         layout.addRow(QLabel("SPEED_KI"), self.speed_ki_textbox)
-        layout.addRow(QLabel("TURN_KP"), self.turn_kp_textbox)
         layout.addRow(QLabel("TURN_KD"), self.turn_kd_textbox)
+        layout.addRow(QLabel("ANGLE_OFFSET"), self.angle_offset_textbox)
 
         btn_layout = QHBoxLayout()
 
@@ -324,8 +325,8 @@ class ParameterWidget(QWidget):
         self.params.steering_kd = int(self.steer_kd_textbox.text())
         self.params.speed_kp = int(self.speed_kp_textbox.text())
         self.params.speed_ki = int(self.speed_ki_textbox.text())
-        self.params.turn_kp = int(self.turn_kp_textbox.text())
         self.params.turn_kd = int(self.turn_kd_textbox.text())
+        self.params.angle_offset = int(self.angle_offset_textbox.text())
 
         socket().send_message(self.params.to_json())
         self.close_popup()
@@ -343,8 +344,8 @@ class ParameterWidget(QWidget):
         self.steer_kd_textbox.setText(str(self.params.steering_kd))
         self.speed_kp_textbox.setText(str(self.params.speed_kp))
         self.speed_ki_textbox.setText(str(self.params.speed_ki))
-        self.turn_kp_textbox.setText(str(self.params.turn_kp))
         self.turn_kd_textbox.setText(str(self.params.turn_kd))
+        self.angle_offset_textbox.setText(str(self.params.angle_offset))
 
         self.setMinimumSize(300, 60)
         self.setWindowTitle("Parameterkonfiguration")
@@ -366,7 +367,7 @@ class ControlsWidget(QWidget):
         # Initate parameters with default values
         self.param_data = ParameterConfiguration(STEER_KP, STEER_KD,
                                                  SPEED_KP, SPEED_KI,
-                                                 TURN_KP, TURN_KD)
+                                                 TURN_KD, ANGLE_OFFSET)
         param = ParameterWidget()
 
         # Parameter button
