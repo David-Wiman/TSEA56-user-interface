@@ -13,6 +13,7 @@ from config import (CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER, MAX_SEND_RATE,
                     SPEED_KI, SPEED_KP, STEER_KD, STEER_KP)
 from data import (Direction, DriveData, ManualDriveInstruction, MapData,
                   ParameterConfiguration, SemiDriveInstruction)
+from map_creator import MapCreatorWidget
 
 
 def LOG(severity: str, message: str):
@@ -31,13 +32,15 @@ class PlaceHolder(QLabel):
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 
 
-class MapWidget(PlaceHolder):
+class MapWidget(MapCreatorWidget):
     """ A map that illustrates where the car is on the track """
 
     def __init__(self):
-        super().__init__("Map")
+        super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setStyleSheet("border: 1px solid grey")
+
+        self.scale(0.6, 0.6)
 
 
 class DataWidget(QFrame):

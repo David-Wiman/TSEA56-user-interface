@@ -115,9 +115,9 @@ class MapData:
             print("Map already contains \"{}\"".format(node))
             return
 
-        self.map[node] = {}
+        self.map[node] = []
 
-    def connect_node(self, node_1: str, node_2: str, weight: int):
+    def connect_node(self, node_1: str, node_2: str, weight: int, is_left=True):
         """ Connects node_1 to node_2 with weight. Adds nodes if not already in map. """
         if node_1 not in self.map:
             self.add_node(node_1)
@@ -125,9 +125,11 @@ class MapData:
         if node_2 not in self.map:
             self.add_node(node_2)
 
-        print("Connecting " + node_1 + " -> " + node_2)
-
-        self.map[node_1][node_2] = weight
+        index = 0 if is_left else 1
+        edge = {node_2: weight}
+        if edge not in self.map[node_1]:
+            print("Connecting " + node_1 + " -> " + node_2)
+            self.map[node_1].insert(index, edge)
 
     def verify_complete_map(self):
         """ Returns 'True' if if map is complete """

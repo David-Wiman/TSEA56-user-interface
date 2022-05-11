@@ -345,7 +345,7 @@ class MapCreatorWindow(QStackedWidget):
 
     WINDOW_SIZE = 800
 
-    def __init__(self):
+    def __init__(self, creator_widget: MapCreatorWidget):
         super().__init__()
 
         self.setWindowTitle("Kartritning")
@@ -353,7 +353,7 @@ class MapCreatorWindow(QStackedWidget):
                             self.WINDOW_SIZE)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        creator_widget = MapCreatorWidget()
+        self.creator_widget = creator_widget
         self.addWidget(creator_widget)
         self.create_buttons(creator_widget)
 
