@@ -9,6 +9,10 @@ class JSONSerializable:
 
     def wrap_json(self, type_name: str, body: str):
         """ Wraps body with key, json formatted """
+
+        # \n reserved for end of message char in socket communication
+        body = body.replace("\n", "")
+        body = body.replace("'", r'"')  # Car can't handle symbol '
         return "{" + "\"{}\": {}".format(type_name, body) + "}"
 
     def to_json(self, type_name: str) -> str:
@@ -16,8 +20,6 @@ class JSONSerializable:
         payload = json.dumps(self, default=lambda o: o.__dict__,
                              sort_keys=True, indent=1)
 
-        # \n reserved for end of message char in socket communication
-        payload = payload.replace("\n", "")
         return self.wrap_json(type_name, payload)
 
 
