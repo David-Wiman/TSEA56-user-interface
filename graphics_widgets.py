@@ -12,8 +12,9 @@ from backend import backend_signals, socket
 from config import (ANGLE_OFFSET, CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER,
                     MAX_SEND_RATE, SPEED_KI, SPEED_KP, STEER_KD, STEER_KP,
                     TURN_KD)
-from data import (Direction, DriveData, ManualDriveInstruction, MapData,
-                  ParameterConfiguration, SemiDriveInstruction)
+from data import (Direction, DriveData, DriveMission, DrivingMode,
+                  ManualDriveInstruction, MapData, ParameterConfiguration,
+                  SemiDriveInstruction)
 from map_creator import MapCreatorWidget
 
 
@@ -171,7 +172,27 @@ class DataWidget(QFrame):
         print("Saved " + name + " data to: " + fname)
 
 
-class PlanWidget(QScrollArea):
+class PlanWidget(QStackedWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        manual = QWidget()  # Empty plan in manual mode
+        semi_mode = SemiPlanWidget()
+        auto_mode = AutoPlanWidget()
+
+        self.insertWidget(DrivingMode.MANUAL, manual)
+        self.insertWidget(DrivingMode.SEMIAUTO, semi_mode)
+        self.insertWidget(DrivingMode.AUTO, auto_mode)
+
+        backend_signals().change_drive_mode.connect(self.switch_mode)
+
+    def switch_mode(self, mode: DrivingMode):
+        """ Switches which plan is being displayed """
+        self.setCurrentIndex(mode)
+
+
+class SemiPlanWidget(QScrollArea):
     """ A box that lists the currently planned driving instructions """
 
     class InstructionWidget(QLabel):
@@ -255,6 +276,59 @@ class PlanWidget(QScrollArea):
         self.instructions = []
         print("Queue cleared")
         self.draw_instructions()  # Redraw queue
+
+
+class AutoPlanWidget(QScrollArea):
+    """ A box that lists the current drive mission """
+
+    class DestinationLabel(QLabel):
+        """ Small label showing a destination name """
+
+        def __init__(self, dest_name: str):
+            super().__init__()
+            self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            self.setMaximumHeight(90)
+
+            font = self.font()
+            font.setPointSize(30)
+            self.setFont(font)
+            self.setText(dest_name)
+
+            self.setStyleSheet("border: 1px solid grey")
+
+    def __init__(self):
+        super().__init__()
+        self.mission = DriveMission()
+
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setWidgetResizable(True)
+
+        # Draw all current instructions in list
+        self.draw_mission()
+
+        # Update gui plan when current drive mission is updated
+        backend_signals().update_drive_mission.connect(self.update_mission)
+
+        self.setStyleSheet("border: 1px solid grey")
+
+    def draw_mission(self):
+        queue = QWidget()
+        queue.setStyleSheet("border: none")
+        self.setWidget(queue)
+
+        layout = QHBoxLayout(queue)
+        layout.setSpacing(15)
+
+        for dest in self.mission.destinations:
+            layout.addWidget(self.DestinationLabel(dest))
+
+        layout.addStretch()  # Left align padding
+
+    def update_mission(self, mission: DriveMission):
+        """ Updates mission in plan """
+        self.mission = mission
+        self.draw_mission()
 
 
 class LogWidget(QTabWidget):
@@ -356,8 +430,6 @@ class ParameterWidget(QWidget):
 class ControlsWidget(QWidget):
     """ A controls area where the user can control the car. Has different modes. """
 
-    widget_index = {"manual": 0, "semi": 1, "auto": 2}
-
     def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -395,18 +467,20 @@ class ControlsWidget(QWidget):
         semi_mode = SemiMode()
         auto_mode = AutoMode()
 
-        self.controls.insertWidget(self.widget_index["manual"], manual_mode)
-        self.controls.insertWidget(self.widget_index["semi"], semi_mode)
-        self.controls.insertWidget(self.widget_index["auto"], auto_mode)
+        self.controls.insertWidget(DrivingMode.MANUAL, manual_mode)
+        self.controls.insertWidget(DrivingMode.SEMIAUTO, semi_mode)
+        self.controls.insertWidget(DrivingMode.AUTO, auto_mode)
+
+        backend_signals().change_drive_mode.connect(self.switch_mode)
 
         # Add controls on the right
         layout.addWidget(self.controls)
 
         self.setStyleSheet("border: 1px solid grey")
 
-    def set_index(self, mode):
+    def switch_mode(self, mode: DrivingMode):
         """ Change which controls are currently visible """
-        self.controls.setCurrentIndex(self.widget_index[mode])
+        self.controls.setCurrentIndex(mode)
 
 
 class ManualMode(QWidget):
@@ -608,6 +682,7 @@ class AutoMode(QWidget):
         """ Deletes all destinations from mission """
         self.auto.clear()
         self.destination_input.setPlainText("")  # Clear input space
+        backend_signals().update_drive_mission.emit(self.auto)
 
     def add_destination(self):
         """ Adds a new destination to the current drive mission """
@@ -625,6 +700,7 @@ class AutoMode(QWidget):
 
         self.auto.add_destination(new_dest)
         self.destination_input.setPlainText("")  # Clear input space
+        backend_signals().update_drive_mission.emit(self.auto)
         print(self.auto.to_json())
 
     def send_mission(self):
@@ -634,20 +710,21 @@ class AutoMode(QWidget):
 
 
 class ButtonsWidget(QWidget):
-    """ Buttons that can change which drivning mode is used to steer the car """
+    """ Buttons that can change which drivning mode is used to control the car """
 
     class ModeButton(QPushButton):
-        """ A button that can toggle driving modes for the ControlWidget """
+        """ A button that can toggle driving modes for the application """
 
-        def __init__(self, label: str, action=lambda: None):
+        def __init__(self, label: str, mode: DrivingMode):
             super().__init__()
             self.setMinimumSize(110, 45)
 
             self.setText(label)
-            self.clicked.connect(lambda: self.action(action))
+            self.clicked.connect(lambda: self.switch_mode(mode))
 
-        def action(self, action):
-            action()
+        def switch_mode(self, mode: DrivingMode):
+            """ Signals to app to switch driving mode """
+            backend_signals().change_drive_mode.emit(mode)
 
     def __init__(self, change_mode=lambda: None):
         super().__init__()
@@ -655,9 +732,9 @@ class ButtonsWidget(QWidget):
 
         layout = QHBoxLayout(self)
 
-        manual_btn = self.ModeButton("Manuell", lambda: change_mode("manual"))
-        semi_btn = self.ModeButton("Semiautonom", lambda: change_mode("semi"))
-        full_btn = self.ModeButton("Helautonom", lambda: change_mode("auto"))
+        manual_btn = self.ModeButton("Manuell", DrivingMode.MANUAL)
+        semi_btn = self.ModeButton("Semiautonom", DrivingMode.SEMIAUTO)
+        full_btn = self.ModeButton("Helautonom", DrivingMode.AUTO)
 
         layout.addWidget(manual_btn)
         layout.addWidget(semi_btn)

@@ -55,6 +55,13 @@ class DriveData(JSONSerializable):
         return super().to_json("DriveData")
 
 
+class DrivingMode:
+    """ Available modes the car can be driven in """
+    MANUAL = 0
+    SEMIAUTO = 1
+    AUTO = 2
+
+
 class ManualDriveInstruction(JSONSerializable):
     """ Simple dataclass to represent a drive instruction for the car """
 

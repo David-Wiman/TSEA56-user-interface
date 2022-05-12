@@ -3,8 +3,8 @@ from PySide6.QtNetwork import QAbstractSocket, QTcpSocket
 from PySide6.QtWidgets import QApplication
 
 from config import PORT, SERVER_IP
-from data import (DriveData, ManualDriveInstruction, SemiDriveInstruction,
-                  get_type_and_data)
+from data import (DriveData, DriveMission, ManualDriveInstruction,
+                  SemiDriveInstruction, get_type_and_data)
 
 
 class BackendSignals(QObject):
@@ -30,6 +30,12 @@ class BackendSignals(QObject):
 
     clear_semi_instructions = Signal()
     """ Removes all semi-auto instructions for ui """
+
+    update_drive_mission = Signal(DriveMission)
+    """ Updates the current drive mission """
+
+    change_drive_mode = Signal(int)
+    """ Changes controls and plan to specified mode """
 
 
 def backend_signals():

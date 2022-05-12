@@ -57,8 +57,7 @@ class MainWindow(QMainWindow):
         plan_widget = PlanWidget()
         logg_widget = LogWidget()
         controls_widget = ControlsWidget()
-        buttons_widget = ButtonsWidget(
-            lambda mode: controls_widget.set_index(mode))
+        buttons_widget = ButtonsWidget()
 
         layout_vert_l_top = QHBoxLayout()
         layout_vert_l_top.addWidget(self.map_widget)
