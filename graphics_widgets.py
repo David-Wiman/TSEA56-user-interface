@@ -172,24 +172,40 @@ class DataWidget(QFrame):
         print("Saved " + name + " data to: " + fname)
 
 
-class PlanWidget(QStackedWidget):
+class PlanWidget(QWidget):
+
+    POSITION_PREFIX = "Position: "
 
     def __init__(self):
         super().__init__()
 
+        layout = QVBoxLayout(self)
+
+        self.position_label = QLabel()
+        self.update_position("")
+
+        self.plan = QStackedWidget()
         manual = QWidget()  # Empty plan in manual mode
         semi_mode = SemiPlanWidget()
         auto_mode = AutoPlanWidget()
 
-        self.insertWidget(DrivingMode.MANUAL, manual)
-        self.insertWidget(DrivingMode.SEMIAUTO, semi_mode)
-        self.insertWidget(DrivingMode.AUTO, auto_mode)
+        self.plan.insertWidget(DrivingMode.MANUAL, manual)
+        self.plan.insertWidget(DrivingMode.SEMIAUTO, semi_mode)
+        self.plan.insertWidget(DrivingMode.AUTO, auto_mode)
+
+        layout.addWidget(self.plan)
+        layout.addWidget(self.position_label)
 
         backend_signals().change_drive_mode.connect(self.switch_mode)
+        backend_signals().update_position.connect(self.update_position)
+
+    def update_position(self, position: str):
+        """ Updates displayed position on plan """
+        self.position_label.setText(self.POSITION_PREFIX + position)
 
     def switch_mode(self, mode: DrivingMode):
         """ Switches which plan is being displayed """
-        self.setCurrentIndex(mode)
+        self.plan.setCurrentIndex(mode)
 
 
 class SemiPlanWidget(QScrollArea):
@@ -317,8 +333,7 @@ class AutoPlanWidget(QScrollArea):
     def __init__(self):
         super().__init__()
         self.mission = DriveMission()
-        self.dest_labels: dict[str, AutoPlanWidget.DestinationLabel] = {}
-        self.position = ""
+        self.dest_labels: list[AutoPlanWidget.DestinationLabel] = []
         self.current_pos_index = 0
         self.next_dest_index = 1
 
@@ -339,13 +354,14 @@ class AutoPlanWidget(QScrollArea):
         queue = QWidget()
         queue.setStyleSheet("border: none")
         self.setWidget(queue)
+        self.dest_labels = []
 
         layout = QHBoxLayout(queue)
         layout.setSpacing(15)
 
         for dest in self.mission.destinations:
             dest_label = self.DestinationLabel(dest)
-            self.dest_labels[dest] = dest_label
+            self.dest_labels.append(dest_label)
             layout.addWidget(dest_label)
 
         layout.addStretch()  # Left align padding
@@ -358,34 +374,31 @@ class AutoPlanWidget(QScrollArea):
         if len(mission.destinations) > 1:
             self.current_pos_index = 0
             self.next_dest_index = 1
-            current_dest = self.mission.destinations[self.current_pos_index]
-            self.dest_labels[current_dest].set_status(
+            self.dest_labels[self.current_pos_index].set_status(
                 AutoPlanWidget.DestinationStatus.COMPLETED)
 
     def update_destinations(self, position: str):
         """ Updates list of destinations based on position data from car """
-        self.position = position
 
         if "->" in position:
             # Car is between two nodes
             print("Is on edge:", position)
+            self.dest_labels[self.next_dest_index].set_status(
+                AutoPlanWidget.DestinationStatus.ACTIVE)
         else:
             # Car is stopped at node
             print("Is at node:", position)
             if position == self.mission.destinations[self.next_dest_index]:
                 # Car has arrived at next destination
 
-                self.dest_labels[position].set_status(
+                self.dest_labels[self.next_dest_index].set_status(
                     AutoPlanWidget.DestinationStatus.COMPLETED)
 
                 self.next_dest_index += 1
-                next_dest = self.mission.destinations[self.next_dest_index]
-                self.dest_labels[next_dest].set_status(
-                    AutoPlanWidget.DestinationStatus.ACTIVE)
 
             elif position == "end":
-                last_dest = self.mission.destinations[-1]
-                self.dest_labels[last_dest].set_status(
+                # Car is at last destination
+                self.dest_labels[-1].set_status(
                     AutoPlanWidget.DestinationStatus.COMPLETED)
 
 
