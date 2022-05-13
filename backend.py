@@ -37,6 +37,9 @@ class BackendSignals(QObject):
     change_drive_mode = Signal(int)
     """ Changes controls and plan to specified mode """
 
+    update_position = Signal(str)
+    """ Updates cars diplayed position """
+
 
 def backend_signals():
     """ Returns instance of the current BackendSignals """
@@ -105,6 +108,8 @@ class Socket(QObject):
                 backend_signals().new_drive_data.emit(DriveData.from_json(data))
             elif type == "InstructionId":
                 backend_signals().remove_semi_instruction.emit(str(data))
+            elif type == "Position":
+                backend_signals().update_position.emit(str(data))
             else:
                 print("Unknown type: " + type, "\n"+str(data))
                 self.log("Unknown data recieved from car", "WARN")

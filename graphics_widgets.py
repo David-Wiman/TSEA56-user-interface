@@ -281,6 +281,12 @@ class SemiPlanWidget(QScrollArea):
 class AutoPlanWidget(QScrollArea):
     """ A box that lists the current drive mission """
 
+    class DestinationStatus:
+        """ Status for a destination in a drive mission """
+        NOT_ACTIVE = 0
+        ACTIVE = 1
+        COMPLETED = 2
+
     class DestinationLabel(QLabel):
         """ Small label showing a destination name """
 
@@ -294,11 +300,27 @@ class AutoPlanWidget(QScrollArea):
             self.setFont(font)
             self.setText(dest_name)
 
-            self.setStyleSheet("border: 1px solid grey")
+            self.set_status(AutoPlanWidget.DestinationStatus.NOT_ACTIVE)
+
+        def set_status(self, status: int):
+            print("Updating destination status to ", status)
+            if status == AutoPlanWidget.DestinationStatus.COMPLETED:
+                self.setStyleSheet(
+                    "background-color: green; border: 1px solid grey")
+            elif status == AutoPlanWidget.DestinationStatus.ACTIVE:
+                self.setStyleSheet(
+                    "background-color: yellow; border: 1px solid grey")
+            elif status == AutoPlanWidget.DestinationStatus.NOT_ACTIVE:
+                self.setStyleSheet(
+                    "background-color: grey; border: 1px solid grey")
 
     def __init__(self):
         super().__init__()
         self.mission = DriveMission()
+        self.dest_labels: dict[str, AutoPlanWidget.DestinationLabel] = {}
+        self.position = ""
+        self.current_pos_index = 0
+        self.next_dest_index = 1
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -309,6 +331,7 @@ class AutoPlanWidget(QScrollArea):
 
         # Update gui plan when current drive mission is updated
         backend_signals().update_drive_mission.connect(self.update_mission)
+        backend_signals().update_position.connect(self.update_destinations)
 
         self.setStyleSheet("border: 1px solid grey")
 
@@ -321,14 +344,49 @@ class AutoPlanWidget(QScrollArea):
         layout.setSpacing(15)
 
         for dest in self.mission.destinations:
-            layout.addWidget(self.DestinationLabel(dest))
+            dest_label = self.DestinationLabel(dest)
+            self.dest_labels[dest] = dest_label
+            layout.addWidget(dest_label)
 
         layout.addStretch()  # Left align padding
 
     def update_mission(self, mission: DriveMission):
-        """ Updates mission in plan """
+        """ Updates current mission in plan """
         self.mission = mission
         self.draw_mission()
+
+        if len(mission.destinations) > 1:
+            self.current_pos_index = 0
+            self.next_dest_index = 1
+            current_dest = self.mission.destinations[self.current_pos_index]
+            self.dest_labels[current_dest].set_status(
+                AutoPlanWidget.DestinationStatus.COMPLETED)
+
+    def update_destinations(self, position: str):
+        """ Updates list of destinations based on position data from car """
+        self.position = position
+
+        if "->" in position:
+            # Car is between two nodes
+            print("Is on edge:", position)
+        else:
+            # Car is stopped at node
+            print("Is at node:", position)
+            if position == self.mission.destinations[self.next_dest_index]:
+                # Car has arrived at next destination
+
+                self.dest_labels[position].set_status(
+                    AutoPlanWidget.DestinationStatus.COMPLETED)
+
+                self.next_dest_index += 1
+                next_dest = self.mission.destinations[self.next_dest_index]
+                self.dest_labels[next_dest].set_status(
+                    AutoPlanWidget.DestinationStatus.ACTIVE)
+
+            elif position == "end":
+                last_dest = self.mission.destinations[-1]
+                self.dest_labels[last_dest].set_status(
+                    AutoPlanWidget.DestinationStatus.COMPLETED)
 
 
 class LogWidget(QTabWidget):
@@ -726,7 +784,7 @@ class ButtonsWidget(QWidget):
             """ Signals to app to switch driving mode """
             backend_signals().change_drive_mode.emit(mode)
 
-    def __init__(self, change_mode=lambda: None):
+    def __init__(self):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 

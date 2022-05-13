@@ -536,7 +536,8 @@ if __name__ == "__main__":
     # Only here for debug purposes
     app = QApplication([])
 
-    map = MapCreatorWindow()
+    creator = MapCreatorWidget()
+    map = MapCreatorWindow(creator)
 
     window = QMainWindow()
     window.setCentralWidget(map)
