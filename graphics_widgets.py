@@ -110,6 +110,7 @@ class DataWidget(QFrame):
 
         # Automatically update data when it arrives from socket
         backend_signals().new_drive_data.connect(self.update_data)
+        backend_signals().clear_data.connect(self.clear_data)
 
     def update_data(self, data: DriveData):
         self.labels[0].update_data(int(data.elapsed_time / 1000))  # ms-> s
@@ -158,6 +159,10 @@ class DataWidget(QFrame):
                        for data in self.all_data]))
             file.close()
         print("Saved " + name + " data to: " + fname)
+
+    def clear_data(self):
+        """ Clears all saved drive data """
+        self.all_data.clear()
 
 
 class PlanWidget(QScrollArea):
@@ -307,7 +312,7 @@ class ParameterWidget(QWidget):
         layout.addRow(btn_layout)
 
     def send_params(self):
-        """ Send entered paramters to car """
+        """ Send entered parameters to car """
         LOG("INFO", "Sending new parameters to car")
 
         # Save entered params in object
@@ -326,7 +331,7 @@ class ParameterWidget(QWidget):
         self.close()
 
     def open_popup(self, params=ParameterConfiguration()):
-        """ Open parmater configuration dialogbox, provide current params instance """
+        """ Open parameter configuration dialogbox, provide current params instance """
         self.params = params  # Update params
 
         # Autofill text boxes with current params

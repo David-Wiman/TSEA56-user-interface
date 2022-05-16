@@ -19,6 +19,9 @@ class BackendSignals(QObject):
     log_msg = Signal(str, str)
     """ New severity and message has been sent to logger """
 
+    clear_data = Signal()
+    """ Clears saved drive data """
+
     new_semi_instruction = Signal(SemiDriveInstruction)
     """ New semi-auto instruction has been sent """
 
@@ -110,7 +113,9 @@ class Socket(QObject):
             self.log("Remote closed connection incorrectly", "ERROR")
 
     def on_connected(self):
+        # Clear old data on new connections
         backend_signals().clear_semi_instructions.emit()
+        backend_signals().clear_data.emit()
         self.log("Connected")
 
     def on_disconnected(self):
