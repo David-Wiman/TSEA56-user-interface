@@ -84,10 +84,16 @@ class MainWindow(QMainWindow):
         backend_signals().clear_semi_instructions.emit()
 
     def send_map(self):
-        """ Sends current map instance to car """
+        """ Sends map to car """
         map: str
-        with open("map/map.json", "r") as file:
-            map = file.read().rstrip().replace("\n", "").replace("  ", "")
+        try:
+            with open("map/new_map.json", "r") as file:
+                map = file.read()
+        except:
+            with open("map/default_map.json", "r") as file:
+                map = file.read()
+
+        map = map.rstrip().replace("\n", "").replace("  ", "")
         backend_signals().log_msg.emit("INFO", "Sending map to car")
         socket().send_message(map)
 

@@ -1,12 +1,12 @@
 from PySide6.QtCore import QLineF, QPointF, QRectF, QSizeF, Qt
-from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPen, QVector2D
+from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
                                QGraphicsSceneMouseEvent, QGraphicsView,
                                QHBoxLayout, QLabel, QLineEdit, QMainWindow,
                                QPushButton, QSizePolicy, QStackedWidget,
                                QVBoxLayout, QWidget)
-from backend import backend_signals
 
+from backend import backend_signals
 from data import MapData
 
 
@@ -345,7 +345,7 @@ class MapCreatorWindow(QStackedWidget):
 
     WINDOW_SIZE = 800
 
-    def __init__(self, creator_widget: MapCreatorWidget):
+    def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Kartritning")
@@ -493,25 +493,30 @@ def create_map_from_graph(nodes: list[Node]) -> MapData:
                      "1", edge_weight(prev_node, start_node))
 
     connect_node_pair(map, prev_node, start_node, visited, intersections)
+
     print("Intersections: ", len(intersections))
     for intersection in intersections:
         print([node.name for node in intersection])
         connect_intersection(map, intersection)
+
+    sort_next_nodes(nodes, map.map)
+
     return map
 
 
 def connect_intersection(map: MapData, intersec_nodes: list[Node]):
     entry_nodes = set()
     exit_nodes = set()
-    node_names = [n.name + "1" for n in intersec_nodes] + \
-        [n.name + "2" for n in intersec_nodes]
+    node_names = [node.name + "1" for node in intersec_nodes] + \
+                 [node.name + "2" for node in intersec_nodes]
 
     for node in node_names:
-        for neighbour in map.map[node]:
-            # Check if node is an exit node
-            if neighbour not in node_names:
-                # Node is an exit node
-                exit_nodes.add(node)
+        for neighbours in map.map[node]:
+            for neighbour in neighbours:
+                # Check if node is an exit node
+                if neighbour not in node_names:
+                    # Node is an exit node
+                    exit_nodes.add(node)
 
         print(node, map.map[node])
 
@@ -528,16 +533,47 @@ def connect_intersection(map: MapData, intersec_nodes: list[Node]):
         for exit in exit_nodes:
             if exit[0:-1] != entry[0:-1]:
                 # Connect all entries to exits, except on the same side (eg L1 and L2)
-                map.connect_node(entry, exit, edge_weight_str(
-                    intersec_nodes, entry, exit))
+                weight = edge_weight_str(intersec_nodes, entry, exit)
+                map.connect_node(entry, exit, weight)
+
+    print(map.to_json())
+
+
+def sort_next_nodes(nodes: list[Node], map: dict):
+    for current, nexts in map.items():
+        if len(nexts) < 2:
+            continue
+
+        # Find current node
+        current_node = get_node(nodes, current)
+
+        # Find previous node
+        previous = next(iter(map[current_node.name + ("1" if current[1:] == "2" else "2")][0]))
+        previous = previous[0:-1] + ("1" if previous[1:] == "2" else "2")
+        print(previous, current)
+        previous_node = get_node(nodes, previous)
+
+
+        next_nodes = get_sorted_next_nodes(previous_node, current_node)
+        right_most = next(iter(nexts[0].keys()))
+        if right_most[0:-1] == next_nodes[0].name:
+            map[current].reverse()
+            print("Reversed", current)
+        
+        
+        print(previous_node.name, current, nexts, next_nodes[0].name, right_most)
+
+def get_node(nodes: list[Node], name: str):
+    for node in nodes:
+        if node.name == name[0:-1]:
+            return node
 
 
 if __name__ == "__main__":
     # Only here for debug purposes
     app = QApplication([])
 
-    creator = MapCreatorWidget()
-    map = MapCreatorWindow(creator)
+    map = MapCreatorWindow()
 
     window = QMainWindow()
     window.setCentralWidget(map)

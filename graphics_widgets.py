@@ -13,9 +13,8 @@ from config import (ANGLE_OFFSET, CAR_ACC, DATA_PATH, FULL_STEER, HALF_STEER,
                     MAX_SEND_RATE, SPEED_KI, SPEED_KP, STEER_KD, STEER_KP,
                     TURN_KD)
 from data import (Direction, DriveData, DriveMission, DrivingMode,
-                  ManualDriveInstruction, MapData, ParameterConfiguration,
+                  ManualDriveInstruction, ParameterConfiguration,
                   SemiDriveInstruction)
-from map_creator import MapCreatorWidget
 
 
 def LOG(severity: str, message: str):
