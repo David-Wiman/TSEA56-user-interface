@@ -38,7 +38,7 @@ STEER_KD = 130
 SPEED_KP = 2
 """ Default value for speed kp """
 
-SPEED_KI = 2
+SPEED_KI = 1
 """ Default value for speed ki """
 
 TURN_KD = 150
