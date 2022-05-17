@@ -28,6 +28,7 @@ class Node(QGraphicsItem):
 
         self.name = name
         self.fill_color = self.FILL_COLOR
+        self.direction = None
 
         self.edge_list: list[Edge] = []
 
@@ -100,7 +101,9 @@ class Node(QGraphicsItem):
         return super().itemChange(change, value)
 
     def boundingRect(self):
-        return QRectF(-self.RADIUS/2, -self.RADIUS/2, self.RADIUS, self.RADIUS)
+        offset = 40
+        return QRectF(-self.RADIUS/2-offset/2, -self.RADIUS/2-offset/2,
+                      self.RADIUS+offset, self.RADIUS+offset)
 
     def paint(self, painter: QPainter, _option, _widget):
         # Draws filled circle with a border
@@ -109,6 +112,31 @@ class Node(QGraphicsItem):
         painter.drawEllipse(-self.RADIUS/2, -self.RADIUS/2,
                             self.RADIUS, self.RADIUS)
         painter.drawText(-4, 5, self.name)
+
+        if self.direction is not None:
+            font = painter.font()
+            font.setPixelSize(25)
+            painter.setFont(font)
+            painter.setPen(Qt.green)
+            normal = self.direction.normalVector()
+            normal.setLength(40)
+            painter.drawText(normal.p2(), "1")
+            normal.setLength(-35)
+            painter.drawText(normal.p2(), "2")
+
+    def set_direction(self, previous, next_nodes, reversed=False):
+        print([node.name for node in next_nodes])
+        pos = (self.pos()-previous.pos())
+        for node in next_nodes:
+            pos += (node.pos()-self.pos())
+
+        print(self.name, pos)
+        self.direction = QLineF(QPointF(0, 0), pos)
+        if reversed:
+            self.direction.setLength(-1)
+        else:
+            self.direction.setLength(1)
+        self.update()
 
 
 class Edge(QGraphicsItem):
@@ -389,11 +417,7 @@ class MapCreatorWindow(QStackedWidget):
 
         self.creator_widget.grab().save("res/map.png")
         backend_signals().new_map.emit()
-        self.close()
-
-
-# TODO Handle left/right
-# TODO Handle intersections
+        # self.close()
 
 
 def get_sorted_next_nodes(prev: Node, curr: Node):
@@ -500,6 +524,9 @@ def create_map_from_graph(nodes: list[Node]) -> MapData:
         connect_intersection(map, intersection)
 
     sort_next_nodes(nodes, map.map)
+    new_visited = set()
+    set_direction(nodes, map.map, start_node,
+                  prev_node.name + "1", new_visited)
 
     return map
 
@@ -548,25 +575,41 @@ def sort_next_nodes(nodes: list[Node], map: dict):
         current_node = get_node(nodes, current)
 
         # Find previous node
-        previous = next(iter(map[current_node.name + ("1" if current[1:] == "2" else "2")][0]))
-        previous = previous[0:-1] + ("1" if previous[1:] == "2" else "2")
+        previous = next(
+            iter(map[current_node.name + ("1" if current[-1:] == "2" else "2")][0]))
+        previous = previous[0:-1] + ("1" if previous[-1:] == "2" else "2")
         print(previous, current)
         previous_node = get_node(nodes, previous)
-
 
         next_nodes = get_sorted_next_nodes(previous_node, current_node)
         right_most = next(iter(nexts[0].keys()))
         if right_most[0:-1] == next_nodes[0].name:
             map[current].reverse()
             print("Reversed", current)
-        
-        
-        print(previous_node.name, current, nexts, next_nodes[0].name, right_most)
+
+        print(previous_node.name, current, nexts,
+              next_nodes[0].name, right_most)
+
 
 def get_node(nodes: list[Node], name: str):
     for node in nodes:
         if node.name == name[0:-1]:
             return node
+
+
+def set_direction(nodes: list[Node], map: dict, previous_node: Node, curr: str,
+                  visited: set):
+    print("Visiting: ", curr, "From: ", previous_node.name)
+    current_node = get_node(nodes, curr)
+    next_nodes = [next(iter(node))
+                  for node in map[curr] if next(iter(node))[-1:] == "1"]
+    current_node.set_direction(
+        previous_node, [get_node(nodes, node) for node in next_nodes], True)
+
+    visited.add(curr)
+    for next_node in next_nodes:
+        if next_node not in visited:
+            set_direction(nodes, map, current_node, next_node, visited)
 
 
 if __name__ == "__main__":
