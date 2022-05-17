@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
                                QHBoxLayout, QLabel, QLineEdit, QMainWindow,
                                QPushButton, QSizePolicy, QStackedWidget,
                                QVBoxLayout, QWidget)
+from backend import backend_signals
 
 from data import MapData
 
@@ -245,7 +246,6 @@ class MapCreatorWidget(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.BoundingRectViewportUpdate)
         self.setRenderHint(QPainter.Antialiasing)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.scale(1, 1)
 
         self.nodes: list[Node] = []
         self.draw_nodes()
@@ -345,7 +345,7 @@ class MapCreatorWindow(QStackedWidget):
 
     WINDOW_SIZE = 800
 
-    def __init__(self, creator_widget: MapCreatorWidget):
+    def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Kartritning")
@@ -353,34 +353,43 @@ class MapCreatorWindow(QStackedWidget):
                             self.WINDOW_SIZE)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.creator_widget = creator_widget
-        self.addWidget(creator_widget)
-        self.create_buttons(creator_widget)
+        self.creator_widget = MapCreatorWidget()
+        self.addWidget(self.creator_widget)
+        self.create_buttons()
 
-    def create_buttons(self, creator_widget: MapCreatorWidget):
+    def create_buttons(self):
         """ Create add and delete node buttons """
         buttons = QWidget(self)
         buttons.setFixedSize(120, 120)
         btn_layout = QVBoxLayout()
 
         add_node_btn = QPushButton("Add node")
-        add_node_btn.clicked.connect(lambda: creator_widget.add_node())
+        add_node_btn.clicked.connect(lambda: self.creator_widget.add_node())
         btn_layout.addWidget(add_node_btn)
 
         del_node_btn = QPushButton("Delete node")
-        del_node_btn.clicked.connect(creator_widget.delete_selected_node)
+        del_node_btn.clicked.connect(self.creator_widget.delete_selected_node)
         btn_layout.addWidget(del_node_btn)
 
         name_node_btn = QPushButton("Change name")
-        name_node_btn.clicked.connect(creator_widget.change_selected_node_name)
+        name_node_btn.clicked.connect(
+            self.creator_widget.change_selected_node_name)
         btn_layout.addWidget(name_node_btn)
 
         save_graph_btn = QPushButton("Save map")
-        save_graph_btn.clicked.connect(
-            lambda: print(creator_widget.get_map().to_json()))
+        save_graph_btn.clicked.connect(self.save_map)
         btn_layout.addWidget(save_graph_btn)
 
         buttons.setLayout(btn_layout)
+
+    def save_map(self):
+        """ Saves the map as json and updates saved map image """
+        with open("map/new_map.json", "w") as file:
+            file.write(self.creator_widget.get_map().to_json())
+
+        self.creator_widget.grab().save("res/map.png")
+        backend_signals().new_map.emit()
+        self.close()
 
 
 # TODO Handle left/right
@@ -398,13 +407,6 @@ def get_sorted_next_nodes(prev: Node, curr: Node):
                                      (prev.y()-curr.y()) * (next.x()-prev.x()))
 
     return next_nodes
-    for next in next_nodes:
-        print("Dir:", curr.x() - prev.x(), prev.y() - curr.y())
-        print("Next:", next.x() - prev.x(), prev.y() - next.y())
-        print("Det " + next.name + ":", (curr.x()-prev.x()) *
-              (prev.y()-next.y()) - (prev.y()-curr.y()) * (next.x()-prev.x()))
-
-    print("Sorted: ", [node.name for node in next_nodes])
 
 
 def edge_weight_str(node_list: list[Node], node_str1: str, node_str2: str):
@@ -476,21 +478,6 @@ def connect_node_pair(map: MapData, previous: Node, current: Node,
         reversed = not reversed
 
     print("Return from", current.name)
-    return
-    # Print unconnected nodes
-    print([node for node in visited if len(map.map[node]) < 1])
-    for node in visited:
-        if len(map.map[node]) == 0:
-            # Unconnected
-
-            # Node name for node on opposite side
-            other_side = node[0:-1] + ("1" if node[-1:] == "2" else "2")
-            print("Other " + other_side)
-            if len(map.map[other_side]) != 0:
-                # map.connect_node()
-                print("Node " + node)
-                print("Current " + current.name)
-                pass
 
 
 def create_map_from_graph(nodes: list[Node]) -> MapData:
@@ -500,8 +487,10 @@ def create_map_from_graph(nodes: list[Node]) -> MapData:
 
     prev_node = nodes[0]
     start_node = nodes[1]
-    map.connect_node(prev_node.name+"2", start_node.name+"2", edge_weight(prev_node, start_node))
-    map.connect_node(start_node.name+"1", prev_node.name+"1", edge_weight(prev_node, start_node))
+    map.connect_node(prev_node.name+"2", start_node.name +
+                     "2", edge_weight(prev_node, start_node))
+    map.connect_node(start_node.name+"1", prev_node.name +
+                     "1", edge_weight(prev_node, start_node))
 
     connect_node_pair(map, prev_node, start_node, visited, intersections)
     print("Intersections: ", len(intersections))
@@ -539,7 +528,8 @@ def connect_intersection(map: MapData, intersec_nodes: list[Node]):
         for exit in exit_nodes:
             if exit[0:-1] != entry[0:-1]:
                 # Connect all entries to exits, except on the same side (eg L1 and L2)
-                map.connect_node(entry, exit, edge_weight_str(intersec_nodes, entry, exit))
+                map.connect_node(entry, exit, edge_weight_str(
+                    intersec_nodes, entry, exit))
 
 
 if __name__ == "__main__":

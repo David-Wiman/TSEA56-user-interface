@@ -1,3 +1,5 @@
 __pycache__/
 *.py[cod]
 data/
+res/map.png
+map/new_map.json

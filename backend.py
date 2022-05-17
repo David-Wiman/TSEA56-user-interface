@@ -16,6 +16,9 @@ class BackendSignals(QObject):
     new_drive_data = Signal(DriveData)
     """ New drive data has been recieved from the car"""
 
+    new_map = Signal()
+    """ New map has been created by user """
+
     log_msg = Signal(str, str)
     """ New severity and message has been sent to logger """
 

@@ -1,8 +1,8 @@
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QMainWindow, QMenu,
-                               QVBoxLayout, QWidget, QWidgetAction)
+                               QVBoxLayout, QWidget)
 
-from backend import socket
+from backend import backend_signals, socket
 from config import GUI_HEIGHT, GUI_WIDTH
 from graphics_widgets import (ButtonsWidget, ControlsWidget, DataWidget,
                               LogWidget, MapWidget, PlanWidget)
@@ -72,11 +72,14 @@ class MainWindow(QMainWindow):
         self.central_widget.setLayout(layout_hori)
 
     def open_map_editor(self):
-        self.map_creator = MapCreatorWindow(self.map_widget)
+        self.map_creator = MapCreatorWindow()
         self.map_creator.show()
 
     def connect_to_car(self):
         socket().connect()
+
+    def clear_instructions(self):
+        backend_signals().clear_semi_instructions.emit()
 
 
 if __name__ == "__main__":
