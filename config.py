@@ -35,17 +35,17 @@ MAX_SEND_RATE = 1/10
 STEER_KP = 100
 """ Default value for steering kp """
 
-STEER_KD = 150
+STEER_KD = 130
 """ Default value for steering kd """
 
 SPEED_KP = 2
 """ Default value for speed kp """
 
-SPEED_KI = 2
+SPEED_KI = 1
 """ Default value for speed ki """
 
 TURN_KD = 150
 """ Default value for turn kd """
 
-ANGLE_OFFSET = 1610
+ANGLE_OFFSET = 1630
 """ Value that makes the wheel point straight forward """
