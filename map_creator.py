@@ -347,7 +347,7 @@ class MapCreatorWidget(QGraphicsView):
     def delete_selected_node(self):
         """ Deletes selected node from widget """
         if self.selected_node is not None:
-            self.selected_node.remove_from_scene(self.scene())
+            self.delete_node(self.selected_node)
             self.selected_node = None
 
     def change_selected_node_name(self):
@@ -423,6 +423,8 @@ class MapCreatorWindow(QStackedWidget):
 def get_sorted_next_nodes(prev: Node, curr: Node):
     """ Returns the next nodes sorted right to left, relative to prev->curr direction """
     next_nodes = [edge.get_other_node(curr) for edge in curr.edge_list]
+    print("Prev", prev.name, "Curr", curr.name,
+          "Nexts", [n.name for n in next_nodes])
     next_nodes.remove(prev)  # Dont return previous node
 
     # Sorts next nodes based on cross product with the vector prev -> curr.
@@ -505,12 +507,13 @@ def connect_node_pair(map: MapData, previous: Node, current: Node,
 
 
 def create_map_from_graph(nodes: list[Node]) -> MapData:
-    map = MapData()
+    map = MapData({})
+    print(map.map)
     visited = []
     intersections = []  # Remember nodes in intersections for more processing
 
     prev_node = nodes[0]
-    start_node = nodes[1]
+    start_node = prev_node.edge_list[0].get_other_node(prev_node)
     map.connect_node(prev_node.name+"2", start_node.name +
                      "2", edge_weight(prev_node, start_node))
     map.connect_node(start_node.name+"1", prev_node.name +

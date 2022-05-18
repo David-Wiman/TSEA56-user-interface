@@ -146,7 +146,7 @@ class ParameterConfiguration(JSONSerializable):
 class MapData(JSONSerializable):
     """ A graph representation of a map """
 
-    def __init__(self, map: dict = {}):
+    def __init__(self, map: dict):
         self.map = map
 
     def add_node(self, node: str):
